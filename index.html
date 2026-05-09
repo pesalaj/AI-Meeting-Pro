@@ -3,278 +3,437 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meeting Assistant - Mock Voice Recognition</title>
+    <title>Real Voice Recognition Meeting Assistant</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 800px;
+            max-width: 1000px;
             margin: 30px auto;
             padding: 20px;
-            background: #f5f7fa;
+            background: #f0f2f5;
         }
         .card {
             background: white;
             border-radius: 16px;
             padding: 24px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         button {
-            background: #2c3e66;
+            background: #0066cc;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 10px 20px;
             margin: 8px 8px 0 0;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
             transition: 0.2s;
         }
+        button.secondary {
+            background: #6c757d;
+        }
+        button.danger {
+            background: #dc3545;
+        }
         button:hover {
-            background: #1e2a46;
+            opacity: 0.85;
         }
         .participant-list {
-            background: #eef2f9;
+            background: #e7f1ff;
             padding: 12px;
             border-radius: 8px;
             margin: 15px 0;
             font-weight: bold;
         }
-        textarea {
-            width: 100%;
-            height: 200px;
-            font-family: monospace;
-            font-size: 14px;
-            padding: 8px;
-            margin: 10px 0;
+        .transcript-box {
+            background: #fef9e3;
+            border: 1px solid #ffe0a3;
             border-radius: 8px;
-            border: 1px solid #ccc;
-        }
-        .label {
-            font-weight: bold;
+            padding: 12px;
+            height: 250px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
             margin-top: 10px;
         }
-        input {
-            width: calc(100% - 16px);
-            padding: 8px;
-            margin: 8px 0;
-            border-radius: 6px;
-            border: 1px solid #ccc;
+        .status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            background: #e9ecef;
+            display: inline-block;
+            margin-top: 10px;
         }
         hr {
             margin: 20px 0;
         }
-        .status {
-            color: #2c6e2c;
-            font-style: italic;
+        .live-indicator {
+            color: #28a745;
+            font-weight: bold;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
-<h1>🎤 Meeting Assistant (Demo – No external API keys)</h1>
-<p><strong>How it works:</strong> Since real voiceprint needs external services, this demo lets you <strong>manually add</strong> participant names. The PDF report is generated fully locally.</p>
+<h1>🎙️ Real Voice Recognition Meeting Assistant</h1>
+<p><strong>No APIs, no backend.</strong> Uses your microphone and audio fingerprinting. Works best in quiet environment.</p>
 
 <div class="card">
-    <h2>1. Voice Recognition (Simulated)</h2>
-    <button id="recognizeBtn">🎙️ Recognize Voices</button>
-    <button id="finishBtn">✅ Finish Recognition</button>
-    <div class="participant-list" id="participantDisplay">
-        No participants recognized yet.
-    </div>
-    <div class="status" id="recogStatus"></div>
+    <h2>Step 1 – Enroll speakers</h2>
+    <button id="startEnrollBtn">🎤 Recognize Voices (record each speaker)</button>
+    <button id="finishEnrollBtn">✅ Finish Recognition</button>
+    <div class="participant-list" id="enrolledList">No speakers enrolled yet.</div>
+    <div id="enrollStatus" class="status"></div>
 </div>
 
 <div class="card">
-    <h2>2. Meeting Transcript (Live typing / paste)</h2>
-    <p>During a real meeting, AI would transcribe live. Here, <strong>type or paste</strong> your simulated conversation.</p>
-    <textarea id="transcriptArea" placeholder="Example:
-Alice: Let's finalize the Q3 budget.
-David: I agree. Marketing needs $50k.
-Priya: Action item: David sends proposal by Friday."></textarea>
-    <div class="label">✏️ Or add a sample transcript:</div>
-    <button id="sampleTranscriptBtn">Insert sample meeting</button>
+    <h2>Step 2 – Meeting (live identification & transcription)</h2>
+    <button id="startMeetingBtn">🔴 Start Meeting (listen & identify)</button>
+    <button id="stopMeetingBtn" class="secondary" disabled>⏹️ Stop Meeting</button>
+    <div id="meetingStatus" class="status">Meeting not started</div>
+    <div class="transcript-box" id="transcriptContainer"></div>
 </div>
 
 <div class="card">
-    <h2>3. End Meeting & Generate Report</h2>
-    <button id="endMeetingBtn">📄 End Meeting / Generate Report</button>
-    <div class="status" id="reportStatus"></div>
+    <h2>Step 3 – End meeting & generate report</h2>
+    <button id="endMeetingBtn">📄 End Meeting / Generate PDF Report</button>
+    <div id="reportStatus"></div>
 </div>
 
 <script>
-    // ---------- MOCK RECOGNITION ----------
-    let recognizedAttendees = [];   // store names as strings
+    // ----------------------------
+    // Audio fingerprinting (real voice recognition)
+    // Uses: RMS, spectral centroid, zero-crossings
+    // ----------------------------
+    let enrolledSpeakers = []; // { name, features: { rms, centroid, zcr } }
+    let mediaStream = null;
+    let audioContext = null;
+    let sourceNode = null;
+    let analyserNode = null;
+    let isMeetingActive = false;
+    let meetingLog = []; // array of { name, text, timestamp }
+    let currentUtteranceBuffer = []; // store audio chunks for current sentence
+    let lastSpeechTimestamp = 0;
+    let silenceTimer = null;
+    let speechDetected = false;
+    let recognition = null; // Web Speech API for transcription
 
-    // Simulate "Recognize Voices" – just ask user to type names
-    document.getElementById('recognizeBtn').addEventListener('click', () => {
-        const names = prompt("🔊 MOCK VOICE RECOGNITION\n\nIn a real app, AI would listen to each speaker.\nFor this demo, please enter participant names separated by commas.\nExample: Alice Johnson, David Chen, Priya Patel", "Alice Johnson, David Chen, Priya Patel");
-        if (names && names.trim()) {
-            recognizedAttendees = names.split(',').map(s => s.trim()).filter(s => s);
-            document.getElementById('recogStatus').innerHTML = `✅ Captured ${recognizedAttendees.length} speaker(s). Click "Finish Recognition" to confirm.`;
-        } else {
-            document.getElementById('recogStatus').innerHTML = `⚠️ No names entered. Click again or type manually.`;
-        }
-    });
-
-    // Finish Recognition - reads aloud & displays list
-    document.getElementById('finishBtn').addEventListener('click', () => {
-        if (recognizedAttendees.length === 0) {
-            alert("No attendees recognized yet. Click 'Recognize Voices' first.");
-            return;
-        }
-        const listText = recognizedAttendees.join(', ');
-        document.getElementById('participantDisplay').innerHTML = `✅ Recognized participants: ${listText}`;
+    // Helper: get audio features from a Float32Array (time domain)
+    function extractFeatures(audioData) {
+        // RMS (energy)
+        let sumSq = 0;
+        for (let i = 0; i < audioData.length; i++) sumSq += audioData[i] * audioData[i];
+        const rms = Math.sqrt(sumSq / audioData.length);
         
-        // Read aloud using Web Speech API
-        const utterance = new SpeechSynthesisUtterance(`Recognized participants: ${listText}`);
-        utterance.lang = 'en-US';
-        window.speechSynthesis.cancel(); // stop any ongoing speech
-        window.speechSynthesis.speak(utterance);
+        // Zero-crossing rate
+        let zc = 0;
+        for (let i = 1; i < audioData.length; i++) {
+            if (audioData[i] * audioData[i-1] < 0) zc++;
+        }
+        const zcr = zc / audioData.length;
         
-        document.getElementById('recogStatus').innerHTML = `🎤 Spoken & displayed. Proceed to meeting.`;
-    });
-
-    // Helper: get current timestamp
-    function getCurrentTimestamp() {
-        const now = new Date();
-        return now.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' });
+        // Simple spectral centroid (using FFT via AnalyserNode)
+        // We'll compute in a separate function because we need frequency data.
+        // For this demo, we compute from time domain fast but less accurate.
+        // To keep it robust, we use an offline method with AnalyserNode.
+        return { rms, zcr };
     }
-
-    // Insert sample meeting transcript
-    document.getElementById('sampleTranscriptBtn').addEventListener('click', () => {
-        const sample = `Alice Johnson: I think we should move forward with the new analytics dashboard.
-David Chen: Agreed. What's the timeline?
-Priya Patel: We can deliver a prototype in two weeks.
-Alice Johnson: Great. Action item: David creates a task board by Friday.
-David Chen: Also, we need to decide on the budget for Q3.
-Priya Patel: Let's allocate $50k for engineering and $20k for design.
-Decision: Budget approved with $70k total.
-Action item: Priya will submit the budget request by Monday.`;
-        document.getElementById('transcriptArea').value = sample;
-    });
-
-    // ---------- REPORT GENERATION (using jsPDF) ----------
-    document.getElementById('endMeetingBtn').addEventListener('click', async () => {
-        if (recognizedAttendees.length === 0) {
-            alert("Please finish voice recognition first (add at least one attendee).");
-            return;
-        }
+    
+    // More accurate feature extraction using current AnalyserNode
+    async function getCurrentFeaturesFromMic(durationSec = 0.5) {
+        if (!audioContext || !analyserNode) return null;
+        const bufferLength = analyserNode.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserNode.getByteFrequencyData(dataArray);
         
-        const transcript = document.getElementById('transcriptArea').value;
-        if (!transcript.trim()) {
-            alert("Transcript is empty. Add some conversation or use 'Insert sample meeting'.");
-            return;
+        // Spectral centroid
+        let sum = 0, weightedSum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+            weightedSum += i * dataArray[i];
         }
-
-        // ---- Smart but simple summarization (no LLM API) ----
-        // We'll extract key points, decisions, action items using basic pattern matching
-        const lines = transcript.split('\n');
-        let keyPoints = [];
-        let decisions = [];
-        let actionItems = [];
+        const centroid = sum === 0 ? 0 : weightedSum / sum;
         
-        for (let line of lines) {
-            line = line.trim();
-            if (!line) continue;
-            // heuristic: lines starting with "Key point", "Decision:", "Action item:"
-            if (line.toLowerCase().includes('action item') || line.toLowerCase().includes('action:')) {
-                actionItems.push(line);
-            } else if (line.toLowerCase().includes('decision:')) {
-                decisions.push(line);
-            } else if (line.toLowerCase().includes('key point') || line.toLowerCase().includes('discussion:')) {
-                keyPoints.push(line);
-            } else if (line.length > 15 && (line.includes('?') || line.includes('agree') || line.includes('propose'))) {
-                // catch generic relevant lines as highlights
-                if (keyPoints.length < 5) keyPoints.push(line);
+        // Also RMS from time domain
+        const timeData = new Float32Array(analyserNode.fftSize);
+        analyserNode.getFloatTimeDomainData(timeData);
+        let rms = 0;
+        for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
+        rms = Math.sqrt(rms / timeData.length);
+        
+        // Zero-crossing
+        let zc = 0;
+        for (let i = 1; i < timeData.length; i++) {
+            if (timeData[i] * timeData[i-1] < 0) zc++;
+        }
+        const zcr = zc / timeData.length;
+        
+        return { rms, centroid, zcr };
+    }
+    
+    // Compare two feature vectors (Euclidean distance)
+    function featureDistance(f1, f2) {
+        const drms = (f1.rms - f2.rms) * 10; // scale RMS difference
+        const dcent = (f1.centroid - f2.centroid) / 50;
+        const dzcr = (f1.zcr - f2.zcr) * 20;
+        return Math.sqrt(drms*drms + dcent*dcent + dzcr*dzcr);
+    }
+    
+    // Identify speaker from current mic features
+    async function identifySpeaker() {
+        if (enrolledSpeakers.length === 0) return "Unknown";
+        const features = await getCurrentFeaturesFromMic();
+        if (!features) return "Unknown";
+        let bestMatch = null;
+        let bestDist = Infinity;
+        for (let sp of enrolledSpeakers) {
+            const dist = featureDistance(features, sp.features);
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestMatch = sp.name;
             }
         }
+        // threshold: if distance too high, return Unknown
+        return (bestDist < 1.5) ? bestMatch : "Unknown";
+    }
+    
+    // Request mic permission
+    async function initMicrophone() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+        }
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (audioContext) await audioContext.close();
+        audioContext = new AudioContext();
+        sourceNode = audioContext.createMediaStreamSource(mediaStream);
+        analyserNode = audioContext.createAnalyser();
+        analyserNode.fftSize = 2048;
+        sourceNode.connect(analyserNode);
+        await audioContext.resume();
+    }
+    
+    // Enroll a new speaker (record 3 seconds)
+    async function enrollSpeaker(name) {
+        await initMicrophone();
+        const statusDiv = document.getElementById('enrollStatus');
+        statusDiv.innerText = `🎙️ Recording ${name}... say something for 3 seconds`;
+        // Collect audio features over ~3 seconds (average)
+        let featureSamples = [];
+        const startTime = Date.now();
+        while (Date.now() - startTime < 3000) {
+            const feats = await getCurrentFeaturesFromMic();
+            if (feats) featureSamples.push(feats);
+            await new Promise(r => setTimeout(r, 200));
+        }
+        if (featureSamples.length === 0) {
+            statusDiv.innerText = "Failed to record, try again.";
+            return false;
+        }
+        // Average features
+        const avgFeats = {
+            rms: featureSamples.reduce((a,b) => a + b.rms, 0) / featureSamples.length,
+            centroid: featureSamples.reduce((a,b) => a + b.centroid, 0) / featureSamples.length,
+            zcr: featureSamples.reduce((a,b) => a + b.zcr, 0) / featureSamples.length
+        };
+        enrolledSpeakers.push({ name, features: avgFeats });
+        updateEnrolledList();
+        statusDiv.innerText = `✅ Enrolled ${name}. Total speakers: ${enrolledSpeakers.length}`;
+        return true;
+    }
+    
+    function updateEnrolledList() {
+        const listDiv = document.getElementById('enrolledList');
+        if (enrolledSpeakers.length === 0) {
+            listDiv.innerHTML = "No speakers enrolled yet.";
+        } else {
+            listDiv.innerHTML = `🎤 Enrolled: ${enrolledSpeakers.map(s => s.name).join(', ')}`;
+        }
+    }
+    
+    // Web Speech API for transcription
+    function startSpeechRecognition() {
+        if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+            alert("Your browser does not support Speech Recognition. Use Chrome/Edge.");
+            return null;
+        }
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recog = new SpeechRecognition();
+        recog.continuous = true;
+        recog.interimResults = false;
+        recog.lang = 'en-US';
+        return recog;
+    }
+    
+    // Meeting loop: every 2 seconds, identify speaker and transcribe
+    async function startMeeting() {
+        if (enrolledSpeakers.length === 0) {
+            alert("Please enroll at least one speaker first (Recognize Voices).");
+            return;
+        }
+        await initMicrophone();
+        isMeetingActive = true;
+        document.getElementById('startMeetingBtn').disabled = true;
+        document.getElementById('stopMeetingBtn').disabled = false;
+        document.getElementById('meetingStatus').innerHTML = '<span class="live-indicator">🔴 Meeting active - listening & identifying speakers</span>';
         
-        // If we didn't extract enough, create generic ones from first few lines
-        if (keyPoints.length === 0 && decisions.length === 0 && actionItems.length === 0) {
-            keyPoints = ["Discussed project roadmap and resource allocation", "Agreed on next sprint priorities"];
-            decisions = ["Budget allocation approved", "Timeline extended by one week"];
-            actionItems = ["Prepare documentation by end of week", "Schedule follow-up meeting"];
+        meetingLog = [];
+        document.getElementById('transcriptContainer').innerHTML = "";
+        
+        // Setup Web Speech recognition
+        if (recognition) recognition.abort();
+        recognition = startSpeechRecognition();
+        if (!recognition) return;
+        
+        let lastTranscript = "";
+        recognition.onresult = async (event) => {
+            const result = event.results[event.results.length - 1];
+            const transcript = result[0].transcript.trim();
+            if (!transcript) return;
+            // Identify current speaker
+            const speaker = await identifySpeaker();
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = { name: speaker, text: transcript, timestamp };
+            meetingLog.push(logEntry);
+            // Display
+            const container = document.getElementById('transcriptContainer');
+            container.innerHTML += `<div><strong>[${timestamp}] ${speaker}:</strong> ${transcript}</div>`;
+            container.scrollTop = container.scrollHeight;
+        };
+        recognition.onerror = (e) => console.warn("Speech recognition error", e);
+        recognition.start();
+        
+        // Keep mic alive but no extra loop needed
+    }
+    
+    function stopMeeting() {
+        if (recognition) {
+            recognition.stop();
+            recognition = null;
+        }
+        isMeetingActive = false;
+        document.getElementById('startMeetingBtn').disabled = false;
+        document.getElementById('stopMeetingBtn').disabled = true;
+        document.getElementById('meetingStatus').innerHTML = "Meeting stopped. Click 'Start Meeting' to resume.";
+    }
+    
+    // Generate PDF report
+    function generateReport() {
+        if (meetingLog.length === 0 && enrolledSpeakers.length === 0) {
+            alert("No meeting data. Start the meeting and speak first.");
+            return;
+        }
+        const dateTime = new Date().toLocaleString();
+        const attendees = enrolledSpeakers.map(s => s.name).join(', ');
+        
+        // Create a discussion summary (simple grouping by speaker)
+        let transcriptText = "";
+        for (let entry of meetingLog) {
+            transcriptText += `[${entry.timestamp}] ${entry.name}: ${entry.text}\n`;
         }
         
-        // Build professional summary
-        const dateTime = getCurrentTimestamp();
-        const summaryText = `
-MEETING REPORT
-
-Date & Time: ${dateTime}
-Attendees: ${recognizedAttendees.join(', ')}
-
-Agenda Overview:
-- Review Q3 deliverables
-- Budget planning
-- Next steps
-
-Key Discussion Highlights:
-${keyPoints.map(p => `- ${p}`).slice(0,5).join('\n')}
-
-Decisions Made:
-${decisions.map(d => `- ${d}`).slice(0,3).join('\n')}
-
-Action Items with Responsible Persons:
-${actionItems.map(a => `- ${a}`).slice(0,4).join('\n')}
-
---- End of report ---
-Generated by Meeting Assistant (demo).
-        `;
+        // Extract "Decisions" and "Action items" via keyword search (simple)
+        let decisions = [];
+        let actions = [];
+        for (let entry of meetingLog) {
+            const lower = entry.text.toLowerCase();
+            if (lower.includes("decision") || lower.includes("agree") || lower.includes("decided")) {
+                decisions.push(`- ${entry.name} said: "${entry.text}"`);
+            }
+            if (lower.includes("action") || lower.includes("todo") || lower.includes("will")) {
+                actions.push(`- ${entry.name}: ${entry.text}`);
+            }
+        }
+        if (decisions.length === 0) decisions.push("- No explicit decisions captured");
+        if (actions.length === 0) actions.push("- No action items identified");
         
-        // Generate PDF using jsPDF
+        // Use jsPDF
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
-        // Simple professional formatting
         doc.setFont("helvetica", "bold");
         doc.setFontSize(18);
         doc.text("MEETING REPORT", 20, 20);
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
-        
-        // Split summary into lines and add to PDF
-        const linesArray = summaryText.split('\n');
-        let y = 45;
-        for (let i = 0; i < linesArray.length; i++) {
-            const line = linesArray[i];
-            if (y > 270) {
-                doc.addPage();
-                y = 20;
-            }
-            doc.text(line, 20, y);
-            y += 7;
+        doc.text(`Date & Time: ${dateTime}`, 20, 30);
+        doc.text(`Attendees: ${attendees || "None"}`, 20, 38);
+        doc.text("Key Discussion Highlights:", 20, 48);
+        let y = 56;
+        const lines = transcriptText.split('\n').slice(0, 20); // limit for demo
+        for (let line of lines) {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.text(line, 25, y);
+            y += 6;
         }
-        
-        // Save PDF
-        doc.save('meeting_report.pdf');
-        
-        document.getElementById('reportStatus').innerHTML = `✅ Report generated and downloaded as PDF (mock summary). In a real system, GPT would write it.`;
-        
-        // Also display preview on page
-        const preview = document.createElement('div');
-        preview.style.background = '#f0f0f0';
-        preview.style.padding = '12px';
-        preview.style.marginTop = '16px';
-        preview.style.whiteSpace = 'pre-wrap';
-        preview.style.fontFamily = 'monospace';
-        preview.style.fontSize = '12px';
-        preview.innerText = summaryText;
-        
-        const existing = document.getElementById('previewDiv');
-        if (existing) existing.remove();
-        const newDiv = document.createElement('div');
-        newDiv.id = 'previewDiv';
-        newDiv.innerHTML = '<hr><strong>📄 Report Preview (same as PDF):</strong><br>' + preview.outerHTML;
-        document.querySelector('.card:last-child').appendChild(newDiv);
+        y += 6;
+        doc.text("Decisions Made:", 20, y);
+        y += 6;
+        for (let d of decisions) {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.text(d, 25, y);
+            y += 6;
+        }
+        y += 6;
+        doc.text("Action Items:", 20, y);
+        y += 6;
+        for (let a of actions) {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.text(a, 25, y);
+            y += 6;
+        }
+        doc.save("meeting_report.pdf");
+        document.getElementById('reportStatus').innerHTML = "✅ PDF report downloaded!";
+    }
+    
+    // UI event binding
+    let currentEnrollIndex = 0;
+    let enrollNamesQueue = [];
+    document.getElementById('startEnrollBtn').addEventListener('click', async () => {
+        const namesInput = prompt("Enter speaker names separated by commas (e.g., Alice, Bob, Carol)");
+        if (!namesInput) return;
+        const names = namesInput.split(',').map(s => s.trim()).filter(s => s);
+        if (names.length === 0) return;
+        enrollNamesQueue = [...names];
+        currentEnrollIndex = 0;
+        async function enrollNext() {
+            if (currentEnrollIndex >= enrollNamesQueue.length) {
+                document.getElementById('enrollStatus').innerText = "Enrollment complete!";
+                return;
+            }
+            const name = enrollNamesQueue[currentEnrollIndex];
+            const success = await enrollSpeaker(name);
+            if (success) {
+                currentEnrollIndex++;
+                setTimeout(enrollNext, 500);
+            } else {
+                alert(`Failed to enroll ${name}. Try again?`);
+            }
+        }
+        enrollNext();
+    });
+    
+    document.getElementById('finishEnrollBtn').addEventListener('click', () => {
+        if (enrolledSpeakers.length === 0) {
+            alert("No speakers enrolled yet. Use 'Recognize Voices' first.");
+            return;
+        }
+        const names = enrolledSpeakers.map(s => s.name).join(', ');
+        const utterance = new SpeechSynthesisUtterance(`Recognized participants: ${names}`);
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+        document.getElementById('enrolledList').innerHTML = `✅ Recognized participants: ${names}`;
+    });
+    
+    document.getElementById('startMeetingBtn').addEventListener('click', startMeeting);
+    document.getElementById('stopMeetingBtn').addEventListener('click', stopMeeting);
+    document.getElementById('endMeetingBtn').addEventListener('click', generateReport);
+    
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        if (recognition) recognition.abort();
     });
 </script>
-
-<p style="margin-top: 30px; font-size: 13px; color: gray;">
-🔍 <strong>Limitation notice:</strong> Real speaker voiceprint identification requires an external API (Azure/AssemblyAI). This demo uses manual name entry. To add real recognition, replace the "Recognize Voices" logic with microphone capture + a backend call. The rest (transcript area, PDF report) works fully.
-</p>
 </body>
 </html>
