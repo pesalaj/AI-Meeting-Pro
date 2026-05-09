@@ -3,185 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real Voice Recognition Meeting Assistant</title>
+    <title>Voice Recognition Meeting Assistant | Pro Report</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1000px;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            max-width: 1200px;
             margin: 30px auto;
             padding: 20px;
-            background: #f0f2f5;
+            background: linear-gradient(135deg, #f5f7fc 0%, #e9eef5 100%);
+        }
+        h1 {
+            color: #1a2c4e;
+            border-left: 6px solid #2c7da0;
+            padding-left: 20px;
+            margin-bottom: 10px;
+        }
+        .sub {
+            color: #2c3e66;
+            margin-bottom: 30px;
+            padding-left: 26px;
         }
         .card {
             background: white;
-            border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 24px;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+            box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+            transition: 0.2s;
+            border: 1px solid rgba(44, 125, 160, 0.15);
+        }
+        .card h2 {
+            margin-top: 0;
+            color: #1e3a5f;
+            font-weight: 600;
+            border-bottom: 2px solid #d4e3f0;
+            padding-bottom: 8px;
         }
         button {
-            background: #0066cc;
+            background: #2c7da0;
             color: white;
             border: none;
-            padding: 10px 20px;
-            margin: 8px 8px 0 0;
-            border-radius: 8px;
-            font-size: 15px;
+            padding: 10px 22px;
+            margin: 8px 12px 0 0;
+            border-radius: 40px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             transition: 0.2s;
-        }
-        button.secondary {
-            background: #6c757d;
-        }
-        button.danger {
-            background: #dc3545;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
         button:hover {
-            opacity: 0.85;
+            background: #1f5e7a;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        .participant-list {
-            background: #e7f1ff;
-            padding: 12px;
-            border-radius: 8px;
-            margin: 15px 0;
-            font-weight: bold;
+        .reset-btn {
+            background: #d9534f;
+        }
+        .reset-btn:hover {
+            background: #c9302c;
+        }
+        .secondary {
+            background: #6c757d;
+        }
+        .participant-badge {
+            background: #eef2fa;
+            padding: 12px 16px;
+            border-radius: 40px;
+            margin: 12px 0;
+            font-weight: 600;
+            color: #1e4668;
+            border-left: 4px solid #2c7da0;
         }
         .transcript-box {
-            background: #fef9e3;
-            border: 1px solid #ffe0a3;
-            border-radius: 8px;
-            padding: 12px;
-            height: 250px;
+            background: #fef8e7;
+            border-radius: 20px;
+            padding: 16px;
+            height: 280px;
             overflow-y: auto;
-            font-family: monospace;
+            font-family: 'SF Mono', 'Cascadia Code', monospace;
             font-size: 13px;
-            white-space: pre-wrap;
-            margin-top: 10px;
+            line-height: 1.45;
+            border: 1px solid #ffe0a3;
+            margin-top: 12px;
         }
         .status {
-            padding: 6px 12px;
-            border-radius: 20px;
             background: #e9ecef;
+            border-radius: 30px;
+            padding: 8px 16px;
             display: inline-block;
-            margin-top: 10px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+        .live-badge {
+            background: #28a74520;
+            color: #155724;
+            font-weight: bold;
         }
         hr {
             margin: 20px 0;
+            border: none;
+            height: 1px;
+            background: linear-gradient(to right, #ccc, transparent);
         }
-        .live-indicator {
-            color: #28a745;
-            font-weight: bold;
+        .flex-btns {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
-<h1>🎙️ Real Voice Recognition Meeting Assistant</h1>
-<p><strong>No APIs, no backend.</strong> Uses your microphone and audio fingerprinting. Works best in quiet environment.</p>
+<h1>🎙️ Voice Recognition Meeting Assistant</h1>
+<div class="sub">Real‑time speaker identification · Colorful PDF report · No cloud needed</div>
 
 <div class="card">
-    <h2>Step 1 – Enroll speakers</h2>
-    <button id="startEnrollBtn">🎤 Recognize Voices (record each speaker)</button>
-    <button id="finishEnrollBtn">✅ Finish Recognition</button>
-    <div class="participant-list" id="enrolledList">No speakers enrolled yet.</div>
+    <h2>🔊 1. Enroll speakers (voiceprint)</h2>
+    <div class="flex-btns">
+        <button id="startEnrollBtn">🎤 Recognize Voices</button>
+        <button id="finishEnrollBtn">✅ Finish Recognition</button>
+        <button id="resetAllBtn" class="reset-btn">🔄 Reset Everything</button>
+    </div>
+    <div class="participant-badge" id="enrolledList">📋 No speakers enrolled yet.</div>
     <div id="enrollStatus" class="status"></div>
 </div>
 
 <div class="card">
-    <h2>Step 2 – Meeting (live identification & transcription)</h2>
-    <button id="startMeetingBtn">🔴 Start Meeting (listen & identify)</button>
-    <button id="stopMeetingBtn" class="secondary" disabled>⏹️ Stop Meeting</button>
-    <div id="meetingStatus" class="status">Meeting not started</div>
-    <div class="transcript-box" id="transcriptContainer"></div>
+    <h2>📝 2. Live meeting (identify + transcribe)</h2>
+    <div class="flex-btns">
+        <button id="startMeetingBtn">🔴 Start Meeting</button>
+        <button id="stopMeetingBtn" class="secondary" disabled>⏹️ Stop Meeting</button>
+    </div>
+    <div id="meetingStatus" class="status">⚪ Meeting not started</div>
+    <div class="transcript-box" id="transcriptContainer">
+        <em style="color:#888;">Meeting transcript will appear here with speaker labels...</em>
+    </div>
 </div>
 
 <div class="card">
-    <h2>Step 3 – End meeting & generate report</h2>
-    <button id="endMeetingBtn">📄 End Meeting / Generate PDF Report</button>
-    <div id="reportStatus"></div>
+    <h2>📄 3. Generate professional report</h2>
+    <button id="endMeetingBtn">📑 End Meeting & Create PDF Report</button>
+    <div id="reportStatus" class="status"></div>
 </div>
 
 <script>
-    // ----------------------------
-    // Audio fingerprinting (real voice recognition)
-    // Uses: RMS, spectral centroid, zero-crossings
-    // ----------------------------
-    let enrolledSpeakers = []; // { name, features: { rms, centroid, zcr } }
+    // --------------------------------------------------------------
+    // AUDIO FINGERPRINTING (RMS, centroid, zero-crossing)
+    // --------------------------------------------------------------
+    let enrolledSpeakers = [];      // { name, features }
     let mediaStream = null;
     let audioContext = null;
     let sourceNode = null;
     let analyserNode = null;
     let isMeetingActive = false;
-    let meetingLog = []; // array of { name, text, timestamp }
-    let currentUtteranceBuffer = []; // store audio chunks for current sentence
-    let lastSpeechTimestamp = 0;
-    let silenceTimer = null;
-    let speechDetected = false;
-    let recognition = null; // Web Speech API for transcription
-
-    // Helper: get audio features from a Float32Array (time domain)
-    function extractFeatures(audioData) {
-        // RMS (energy)
-        let sumSq = 0;
-        for (let i = 0; i < audioData.length; i++) sumSq += audioData[i] * audioData[i];
-        const rms = Math.sqrt(sumSq / audioData.length);
-        
-        // Zero-crossing rate
-        let zc = 0;
-        for (let i = 1; i < audioData.length; i++) {
-            if (audioData[i] * audioData[i-1] < 0) zc++;
-        }
-        const zcr = zc / audioData.length;
-        
-        // Simple spectral centroid (using FFT via AnalyserNode)
-        // We'll compute in a separate function because we need frequency data.
-        // For this demo, we compute from time domain fast but less accurate.
-        // To keep it robust, we use an offline method with AnalyserNode.
-        return { rms, zcr };
-    }
+    let meetingLog = [];            // { name, text, timestamp }
+    let recognition = null;         // Web Speech API
     
-    // More accurate feature extraction using current AnalyserNode
-    async function getCurrentFeaturesFromMic(durationSec = 0.5) {
+    // Helper: get current acoustic features
+    async function getCurrentFeaturesFromMic() {
         if (!audioContext || !analyserNode) return null;
         const bufferLength = analyserNode.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        analyserNode.getByteFrequencyData(dataArray);
-        
-        // Spectral centroid
+        const freqArray = new Uint8Array(bufferLength);
+        analyserNode.getByteFrequencyData(freqArray);
         let sum = 0, weightedSum = 0;
         for (let i = 0; i < bufferLength; i++) {
-            sum += dataArray[i];
-            weightedSum += i * dataArray[i];
+            sum += freqArray[i];
+            weightedSum += i * freqArray[i];
         }
         const centroid = sum === 0 ? 0 : weightedSum / sum;
         
-        // Also RMS from time domain
         const timeData = new Float32Array(analyserNode.fftSize);
         analyserNode.getFloatTimeDomainData(timeData);
         let rms = 0;
         for (let i = 0; i < timeData.length; i++) rms += timeData[i] * timeData[i];
         rms = Math.sqrt(rms / timeData.length);
         
-        // Zero-crossing
         let zc = 0;
         for (let i = 1; i < timeData.length; i++) {
             if (timeData[i] * timeData[i-1] < 0) zc++;
         }
         const zcr = zc / timeData.length;
-        
         return { rms, centroid, zcr };
     }
     
-    // Compare two feature vectors (Euclidean distance)
     function featureDistance(f1, f2) {
-        const drms = (f1.rms - f2.rms) * 10; // scale RMS difference
-        const dcent = (f1.centroid - f2.centroid) / 50;
-        const dzcr = (f1.zcr - f2.zcr) * 20;
+        const drms = (f1.rms - f2.rms) * 8;
+        const dcent = (f1.centroid - f2.centroid) / 40;
+        const dzcr = (f1.zcr - f2.zcr) * 15;
         return Math.sqrt(drms*drms + dcent*dcent + dzcr*dzcr);
     }
     
-    // Identify speaker from current mic features
     async function identifySpeaker() {
         if (enrolledSpeakers.length === 0) return "Unknown";
         const features = await getCurrentFeaturesFromMic();
@@ -195,15 +212,11 @@
                 bestMatch = sp.name;
             }
         }
-        // threshold: if distance too high, return Unknown
-        return (bestDist < 1.5) ? bestMatch : "Unknown";
+        return (bestDist < 1.4) ? bestMatch : "Unknown";
     }
     
-    // Request mic permission
     async function initMicrophone() {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-        }
+        if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
         mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
         if (audioContext) await audioContext.close();
         audioContext = new AudioContext();
@@ -214,12 +227,10 @@
         await audioContext.resume();
     }
     
-    // Enroll a new speaker (record 3 seconds)
     async function enrollSpeaker(name) {
         await initMicrophone();
         const statusDiv = document.getElementById('enrollStatus');
-        statusDiv.innerText = `🎙️ Recording ${name}... say something for 3 seconds`;
-        // Collect audio features over ~3 seconds (average)
+        statusDiv.innerText = `🎙️ Recording ${name} — please speak clearly for 3 seconds...`;
         let featureSamples = [];
         const startTime = Date.now();
         while (Date.now() - startTime < 3000) {
@@ -228,10 +239,9 @@
             await new Promise(r => setTimeout(r, 200));
         }
         if (featureSamples.length === 0) {
-            statusDiv.innerText = "Failed to record, try again.";
+            statusDiv.innerText = "❌ Recording failed, retry.";
             return false;
         }
-        // Average features
         const avgFeats = {
             rms: featureSamples.reduce((a,b) => a + b.rms, 0) / featureSamples.length,
             centroid: featureSamples.reduce((a,b) => a + b.centroid, 0) / featureSamples.length,
@@ -239,23 +249,24 @@
         };
         enrolledSpeakers.push({ name, features: avgFeats });
         updateEnrolledList();
-        statusDiv.innerText = `✅ Enrolled ${name}. Total speakers: ${enrolledSpeakers.length}`;
+        statusDiv.innerText = `✅ Enrolled "${name}". Total speakers: ${enrolledSpeakers.length}`;
         return true;
     }
     
     function updateEnrolledList() {
-        const listDiv = document.getElementById('enrolledList');
+        const div = document.getElementById('enrolledList');
         if (enrolledSpeakers.length === 0) {
-            listDiv.innerHTML = "No speakers enrolled yet.";
+            div.innerHTML = "📋 No speakers enrolled yet. Click 'Recognize Voices'.";
         } else {
-            listDiv.innerHTML = `🎤 Enrolled: ${enrolledSpeakers.map(s => s.name).join(', ')}`;
+            const names = enrolledSpeakers.map(s => s.name).join(' · ');
+            div.innerHTML = `🎤 <strong>Enrolled participants:</strong> ${names}`;
         }
     }
     
-    // Web Speech API for transcription
+    // Speech recognition setup
     function startSpeechRecognition() {
         if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-            alert("Your browser does not support Speech Recognition. Use Chrome/Edge.");
+            alert("Your browser does not support Web Speech API. Please use Chrome or Edge.");
             return null;
         }
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -266,45 +277,40 @@
         return recog;
     }
     
-    // Meeting loop: every 2 seconds, identify speaker and transcribe
     async function startMeeting() {
         if (enrolledSpeakers.length === 0) {
-            alert("Please enroll at least one speaker first (Recognize Voices).");
+            alert("Please enroll at least one speaker using 'Recognize Voices' first.");
             return;
         }
         await initMicrophone();
         isMeetingActive = true;
         document.getElementById('startMeetingBtn').disabled = true;
         document.getElementById('stopMeetingBtn').disabled = false;
-        document.getElementById('meetingStatus').innerHTML = '<span class="live-indicator">🔴 Meeting active - listening & identifying speakers</span>';
+        document.getElementById('meetingStatus').innerHTML = '<span style="color:#28a745;">🔴 Meeting active — listening and identifying speakers in real time</span>';
         
-        meetingLog = [];
+        // Clear previous transcript display but keep log
         document.getElementById('transcriptContainer').innerHTML = "";
+        meetingLog = [];
         
-        // Setup Web Speech recognition
         if (recognition) recognition.abort();
         recognition = startSpeechRecognition();
         if (!recognition) return;
         
-        let lastTranscript = "";
         recognition.onresult = async (event) => {
             const result = event.results[event.results.length - 1];
             const transcript = result[0].transcript.trim();
             if (!transcript) return;
-            // Identify current speaker
             const speaker = await identifySpeaker();
-            const timestamp = new Date().toLocaleTimeString();
+            const timestamp = new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', second:'2-digit' });
             const logEntry = { name: speaker, text: transcript, timestamp };
             meetingLog.push(logEntry);
-            // Display
             const container = document.getElementById('transcriptContainer');
-            container.innerHTML += `<div><strong>[${timestamp}] ${speaker}:</strong> ${transcript}</div>`;
+            const color = speaker === "Unknown" ? "#888" : "#1a5d8f";
+            container.innerHTML += `<div style="margin-bottom: 8px;"><strong style="color:${color};">[${timestamp}] ${speaker}:</strong> <span>${transcript}</span></div>`;
             container.scrollTop = container.scrollHeight;
         };
-        recognition.onerror = (e) => console.warn("Speech recognition error", e);
+        recognition.onerror = (e) => console.warn("Recognition error", e);
         recognition.start();
-        
-        // Keep mic alive but no extra loop needed
     }
     
     function stopMeeting() {
@@ -315,99 +321,199 @@
         isMeetingActive = false;
         document.getElementById('startMeetingBtn').disabled = false;
         document.getElementById('stopMeetingBtn').disabled = true;
-        document.getElementById('meetingStatus').innerHTML = "Meeting stopped. Click 'Start Meeting' to resume.";
+        document.getElementById('meetingStatus').innerHTML = "⏹️ Meeting stopped. Click 'Start Meeting' to continue.";
     }
     
-    // Generate PDF report
-    function generateReport() {
+    // ---------- RESET EVERYTHING ----------
+    function resetEverything() {
+        // Stop meeting if active
+        if (isMeetingActive) stopMeeting();
+        // Stop all audio streams
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(t => t.stop());
+            mediaStream = null;
+        }
+        if (audioContext) audioContext.close();
+        audioContext = null;
+        // Clear data
+        enrolledSpeakers = [];
+        meetingLog = [];
+        if (recognition) recognition.abort();
+        recognition = null;
+        // Reset UI
+        updateEnrolledList();
+        document.getElementById('transcriptContainer').innerHTML = "<em style='color:#888;'>Meeting transcript will appear here with speaker labels...</em>";
+        document.getElementById('enrollStatus').innerHTML = "";
+        document.getElementById('meetingStatus').innerHTML = "⚪ Reset done. Ready for new session.";
+        document.getElementById('reportStatus').innerHTML = "";
+        document.getElementById('startMeetingBtn').disabled = false;
+        document.getElementById('stopMeetingBtn').disabled = true;
+        // speak reset confirmation
+        const msg = new SpeechSynthesisUtterance("Reset complete. All speakers and meeting data cleared.");
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(msg);
+    }
+    
+    // ---------- COLORFUL PROFESSIONAL PDF REPORT ----------
+    async function generateColorfulReport() {
         if (meetingLog.length === 0 && enrolledSpeakers.length === 0) {
-            alert("No meeting data. Start the meeting and speak first.");
+            alert("No meeting data. Start the meeting and speak, or enroll speakers first.");
             return;
         }
-        const dateTime = new Date().toLocaleString();
-        const attendees = enrolledSpeakers.map(s => s.name).join(', ');
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
         
-        // Create a discussion summary (simple grouping by speaker)
-        let transcriptText = "";
-        for (let entry of meetingLog) {
-            transcriptText += `[${entry.timestamp}] ${entry.name}: ${entry.text}\n`;
+        // ---- Colors & header ----
+        const primaryColor = [41, 98, 128];   // #2C627A
+        const accentColor = [230, 126, 34];   // #E67E22
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(0, 0, 210, 40, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(24);
+        doc.text("MEETING REPORT", 20, 25);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "normal");
+        doc.text("Executive Summary • Voice Identified", 20, 35);
+        
+        // Date & Time
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        doc.setTextColor(60, 60, 60);
+        doc.setFontSize(10);
+        doc.text(`Generated: ${dateStr} at ${timeStr}`, 20, 52);
+        
+        let y = 62;
+        
+        // Attendees box (COLORFUL)
+        const attendeesList = enrolledSpeakers.length ? enrolledSpeakers.map(s => s.name).join(', ') : "None enrolled";
+        doc.setFillColor(245, 248, 250);
+        doc.roundedRect(20, y, 170, 12, 3, 3, 'F');
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.text("👥 ATTENDEES", 25, y+8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.text(attendeesList, 65, y+8);
+        y += 18;
+        
+        // Key discussion highlights (from transcript)
+        let keyPoints = [];
+        if (meetingLog.length > 0) {
+            const firstFew = meetingLog.slice(0, 8);
+            keyPoints = firstFew.map(entry => `${entry.name}: ${entry.text.substring(0, 90)}${entry.text.length>90?'…':''}`);
+        } else {
+            keyPoints = ["(No conversation captured yet)"];
         }
+        doc.setTextColor(0,0,0);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.text("🔍 KEY DISCUSSION HIGHLIGHTS", 20, y);
+        y += 7;
+        doc.setFontSize(9);
+        doc.setTextColor(50,50,50);
+        for (let i=0; i<Math.min(keyPoints.length, 10); i++) {
+            if (y > 265) { doc.addPage(); y = 20; }
+            doc.text(`• ${keyPoints[i]}`, 25, y);
+            y += 6;
+        }
+        y += 5;
         
-        // Extract "Decisions" and "Action items" via keyword search (simple)
+        // Decisions & action items (smart extraction)
         let decisions = [];
-        let actions = [];
+        let actionItems = [];
         for (let entry of meetingLog) {
             const lower = entry.text.toLowerCase();
-            if (lower.includes("decision") || lower.includes("agree") || lower.includes("decided")) {
-                decisions.push(`- ${entry.name} said: "${entry.text}"`);
+            if (lower.includes("decision") || lower.includes("decided") || lower.includes("agree") || lower.includes("approved")) {
+                decisions.push(`[${entry.name}] ${entry.text.substring(0, 100)}`);
             }
-            if (lower.includes("action") || lower.includes("todo") || lower.includes("will")) {
-                actions.push(`- ${entry.name}: ${entry.text}`);
+            if (lower.includes("action") || lower.includes("todo") || lower.includes("will") || lower.includes("responsible")) {
+                actionItems.push(`📌 ${entry.name}: ${entry.text.substring(0, 100)}`);
             }
         }
-        if (decisions.length === 0) decisions.push("- No explicit decisions captured");
-        if (actions.length === 0) actions.push("- No action items identified");
+        if (decisions.length === 0) decisions.push("No explicit decisions documented.");
+        if (actionItems.length === 0) actionItems.push("No action items captured.");
         
-        // Use jsPDF
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
-        doc.text("MEETING REPORT", 20, 20);
-        doc.setFontSize(10);
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.text("✅ DECISIONS MADE", 20, y);
+        y += 6;
         doc.setFont("helvetica", "normal");
-        doc.text(`Date & Time: ${dateTime}`, 20, 30);
-        doc.text(`Attendees: ${attendees || "None"}`, 20, 38);
-        doc.text("Key Discussion Highlights:", 20, 48);
-        let y = 56;
-        const lines = transcriptText.split('\n').slice(0, 20); // limit for demo
-        for (let line of lines) {
-            if (y > 270) { doc.addPage(); y = 20; }
-            doc.text(line, 25, y);
-            y += 6;
+        doc.setFontSize(9);
+        for (let d of decisions.slice(0, 4)) {
+            if (y > 265) { doc.addPage(); y = 20; }
+            doc.text(`✓ ${d}`, 25, y);
+            y += 5.5;
         }
+        y += 5;
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.text("📌 ACTION ITEMS", 20, y);
         y += 6;
-        doc.text("Decisions Made:", 20, y);
-        y += 6;
-        for (let d of decisions) {
-            if (y > 270) { doc.addPage(); y = 20; }
-            doc.text(d, 25, y);
-            y += 6;
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0);
+        for (let a of actionItems.slice(0, 5)) {
+            if (y > 265) { doc.addPage(); y = 20; }
+            doc.text(`• ${a}`, 25, y);
+            y += 5.5;
         }
-        y += 6;
-        doc.text("Action Items:", 20, y);
-        y += 6;
-        for (let a of actions) {
-            if (y > 270) { doc.addPage(); y = 20; }
-            doc.text(a, 25, y);
-            y += 6;
+        
+        // Full conversation log (smaller font)
+        if (meetingLog.length > 0) {
+            y += 8;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(10);
+            doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+            doc.text("📜 MEETING TRANSCRIPT (timestamped)", 20, y);
+            y += 5;
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(7);
+            doc.setTextColor(80,80,80);
+            for (let entry of meetingLog) {
+                if (y > 275) { doc.addPage(); y = 20; }
+                doc.text(`[${entry.timestamp}] ${entry.name}: ${entry.text}`, 25, y);
+                y += 4.5;
+            }
         }
-        doc.save("meeting_report.pdf");
-        document.getElementById('reportStatus').innerHTML = "✅ PDF report downloaded!";
+        
+        // Footer
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150,150,150);
+            doc.text(`Voice Meeting Assistant · ${now.toLocaleDateString()}`, 20, 287);
+        }
+        
+        doc.save("Professional_Meeting_Report.pdf");
+        document.getElementById('reportStatus').innerHTML = "🎉 Colorful PDF report downloaded! Includes all enrolled attendees and transcript.";
     }
     
-    // UI event binding
+    // UI Bindings
     let currentEnrollIndex = 0;
-    let enrollNamesQueue = [];
+    let enrollQueue = [];
     document.getElementById('startEnrollBtn').addEventListener('click', async () => {
-        const namesInput = prompt("Enter speaker names separated by commas (e.g., Alice, Bob, Carol)");
+        const namesInput = prompt("Enter full names separated by commas (e.g., Alice Johnson, Bob Smith, Carol Davis)");
         if (!namesInput) return;
         const names = namesInput.split(',').map(s => s.trim()).filter(s => s);
         if (names.length === 0) return;
-        enrollNamesQueue = [...names];
+        enrollQueue = [...names];
         currentEnrollIndex = 0;
         async function enrollNext() {
-            if (currentEnrollIndex >= enrollNamesQueue.length) {
-                document.getElementById('enrollStatus').innerText = "Enrollment complete!";
+            if (currentEnrollIndex >= enrollQueue.length) {
+                document.getElementById('enrollStatus').innerHTML = "✨ Enrollment completed! You can now start the meeting.";
                 return;
             }
-            const name = enrollNamesQueue[currentEnrollIndex];
+            const name = enrollQueue[currentEnrollIndex];
             const success = await enrollSpeaker(name);
             if (success) {
                 currentEnrollIndex++;
                 setTimeout(enrollNext, 500);
             } else {
-                alert(`Failed to enroll ${name}. Try again?`);
+                alert(`Failed to record ${name}. Ensure microphone works and try again.`);
             }
         }
         enrollNext();
@@ -422,17 +528,19 @@
         const utterance = new SpeechSynthesisUtterance(`Recognized participants: ${names}`);
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(utterance);
-        document.getElementById('enrolledList').innerHTML = `✅ Recognized participants: ${names}`;
+        document.getElementById('enrolledList').innerHTML = `🎤 <strong>Recognized participants:</strong> ${names}`;
     });
     
+    document.getElementById('resetAllBtn').addEventListener('click', resetEverything);
     document.getElementById('startMeetingBtn').addEventListener('click', startMeeting);
     document.getElementById('stopMeetingBtn').addEventListener('click', stopMeeting);
-    document.getElementById('endMeetingBtn').addEventListener('click', generateReport);
+    document.getElementById('endMeetingBtn').addEventListener('click', generateColorfulReport);
     
-    // Cleanup on page unload
+    // Cleanup on page close
     window.addEventListener('beforeunload', () => {
         if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
         if (recognition) recognition.abort();
+        if (audioContext) audioContext.close();
     });
 </script>
 </body>
