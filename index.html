@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Assistant - Mock Voice Recognition</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #2c3e66;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px 8px 0 0;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #1e2a46;
+        }
+        .participant-list {
+            background: #eef2f9;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 8px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+        .label {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        input {
+            width: calc(100% - 16px);
+            padding: 8px;
+            margin: 8px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        hr {
+            margin: 20px 0;
+        }
+        .status {
+            color: #2c6e2c;
+            font-style: italic;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<h1>🎤 Meeting Assistant (Demo – No external API keys)</h1>
+<p><strong>How it works:</strong> Since real voiceprint needs external services, this demo lets you <strong>manually add</strong> participant names. The PDF report is generated fully locally.</p>
+
+<div class="card">
+    <h2>1. Voice Recognition (Simulated)</h2>
+    <button id="recognizeBtn">🎙️ Recognize Voices</button>
+    <button id="finishBtn">✅ Finish Recognition</button>
+    <div class="participant-list" id="participantDisplay">
+        No participants recognized yet.
+    </div>
+    <div class="status" id="recogStatus"></div>
+</div>
+
+<div class="card">
+    <h2>2. Meeting Transcript (Live typing / paste)</h2>
+    <p>During a real meeting, AI would transcribe live. Here, <strong>type or paste</strong> your simulated conversation.</p>
+    <textarea id="transcriptArea" placeholder="Example:
+Alice: Let's finalize the Q3 budget.
+David: I agree. Marketing needs $50k.
+Priya: Action item: David sends proposal by Friday."></textarea>
+    <div class="label">✏️ Or add a sample transcript:</div>
+    <button id="sampleTranscriptBtn">Insert sample meeting</button>
+</div>
+
+<div class="card">
+    <h2>3. End Meeting & Generate Report</h2>
+    <button id="endMeetingBtn">📄 End Meeting / Generate Report</button>
+    <div class="status" id="reportStatus"></div>
+</div>
+
+<script>
+    // ---------- MOCK RECOGNITION ----------
+    let recognizedAttendees = [];   // store names as strings
+
+    // Simulate "Recognize Voices" – just ask user to type names
+    document.getElementById('recognizeBtn').addEventListener('click', () => {
+        const names = prompt("🔊 MOCK VOICE RECOGNITION\n\nIn a real app, AI would listen to each speaker.\nFor this demo, please enter participant names separated by commas.\nExample: Alice Johnson, David Chen, Priya Patel", "Alice Johnson, David Chen, Priya Patel");
+        if (names && names.trim()) {
+            recognizedAttendees = names.split(',').map(s => s.trim()).filter(s => s);
+            document.getElementById('recogStatus').innerHTML = `✅ Captured ${recognizedAttendees.length} speaker(s). Click "Finish Recognition" to confirm.`;
+        } else {
+            document.getElementById('recogStatus').innerHTML = `⚠️ No names entered. Click again or type manually.`;
+        }
+    });
+
+    // Finish Recognition - reads aloud & displays list
+    document.getElementById('finishBtn').addEventListener('click', () => {
+        if (recognizedAttendees.length === 0) {
+            alert("No attendees recognized yet. Click 'Recognize Voices' first.");
+            return;
+        }
+        const listText = recognizedAttendees.join(', ');
+        document.getElementById('participantDisplay').innerHTML = `✅ Recognized participants: ${listText}`;
+        
+        // Read aloud using Web Speech API
+        const utterance = new SpeechSynthesisUtterance(`Recognized participants: ${listText}`);
+        utterance.lang = 'en-US';
+        window.speechSynthesis.cancel(); // stop any ongoing speech
+        window.speechSynthesis.speak(utterance);
+        
+        document.getElementById('recogStatus').innerHTML = `🎤 Spoken & displayed. Proceed to meeting.`;
+    });
+
+    // Helper: get current timestamp
+    function getCurrentTimestamp() {
+        const now = new Date();
+        return now.toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'long' });
+    }
+
+    // Insert sample meeting transcript
+    document.getElementById('sampleTranscriptBtn').addEventListener('click', () => {
+        const sample = `Alice Johnson: I think we should move forward with the new analytics dashboard.
+David Chen: Agreed. What's the timeline?
+Priya Patel: We can deliver a prototype in two weeks.
+Alice Johnson: Great. Action item: David creates a task board by Friday.
+David Chen: Also, we need to decide on the budget for Q3.
+Priya Patel: Let's allocate $50k for engineering and $20k for design.
+Decision: Budget approved with $70k total.
+Action item: Priya will submit the budget request by Monday.`;
+        document.getElementById('transcriptArea').value = sample;
+    });
+
+    // ---------- REPORT GENERATION (using jsPDF) ----------
+    document.getElementById('endMeetingBtn').addEventListener('click', async () => {
+        if (recognizedAttendees.length === 0) {
+            alert("Please finish voice recognition first (add at least one attendee).");
+            return;
+        }
+        
+        const transcript = document.getElementById('transcriptArea').value;
+        if (!transcript.trim()) {
+            alert("Transcript is empty. Add some conversation or use 'Insert sample meeting'.");
+            return;
+        }
+
+        // ---- Smart but simple summarization (no LLM API) ----
+        // We'll extract key points, decisions, action items using basic pattern matching
+        const lines = transcript.split('\n');
+        let keyPoints = [];
+        let decisions = [];
+        let actionItems = [];
+        
+        for (let line of lines) {
+            line = line.trim();
+            if (!line) continue;
+            // heuristic: lines starting with "Key point", "Decision:", "Action item:"
+            if (line.toLowerCase().includes('action item') || line.toLowerCase().includes('action:')) {
+                actionItems.push(line);
+            } else if (line.toLowerCase().includes('decision:')) {
+                decisions.push(line);
+            } else if (line.toLowerCase().includes('key point') || line.toLowerCase().includes('discussion:')) {
+                keyPoints.push(line);
+            } else if (line.length > 15 && (line.includes('?') || line.includes('agree') || line.includes('propose'))) {
+                // catch generic relevant lines as highlights
+                if (keyPoints.length < 5) keyPoints.push(line);
+            }
+        }
+        
+        // If we didn't extract enough, create generic ones from first few lines
+        if (keyPoints.length === 0 && decisions.length === 0 && actionItems.length === 0) {
+            keyPoints = ["Discussed project roadmap and resource allocation", "Agreed on next sprint priorities"];
+            decisions = ["Budget allocation approved", "Timeline extended by one week"];
+            actionItems = ["Prepare documentation by end of week", "Schedule follow-up meeting"];
+        }
+        
+        // Build professional summary
+        const dateTime = getCurrentTimestamp();
+        const summaryText = `
+MEETING REPORT
+
+Date & Time: ${dateTime}
+Attendees: ${recognizedAttendees.join(', ')}
+
+Agenda Overview:
+- Review Q3 deliverables
+- Budget planning
+- Next steps
+
+Key Discussion Highlights:
+${keyPoints.map(p => `- ${p}`).slice(0,5).join('\n')}
+
+Decisions Made:
+${decisions.map(d => `- ${d}`).slice(0,3).join('\n')}
+
+Action Items with Responsible Persons:
+${actionItems.map(a => `- ${a}`).slice(0,4).join('\n')}
+
+--- End of report ---
+Generated by Meeting Assistant (demo).
+        `;
+        
+        // Generate PDF using jsPDF
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        // Simple professional formatting
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.text("MEETING REPORT", 20, 20);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
+        
+        // Split summary into lines and add to PDF
+        const linesArray = summaryText.split('\n');
+        let y = 45;
+        for (let i = 0; i < linesArray.length; i++) {
+            const line = linesArray[i];
+            if (y > 270) {
+                doc.addPage();
+                y = 20;
+            }
+            doc.text(line, 20, y);
+            y += 7;
+        }
+        
+        // Save PDF
+        doc.save('meeting_report.pdf');
+        
+        document.getElementById('reportStatus').innerHTML = `✅ Report generated and downloaded as PDF (mock summary). In a real system, GPT would write it.`;
+        
+        // Also display preview on page
+        const preview = document.createElement('div');
+        preview.style.background = '#f0f0f0';
+        preview.style.padding = '12px';
+        preview.style.marginTop = '16px';
+        preview.style.whiteSpace = 'pre-wrap';
+        preview.style.fontFamily = 'monospace';
+        preview.style.fontSize = '12px';
+        preview.innerText = summaryText;
+        
+        const existing = document.getElementById('previewDiv');
+        if (existing) existing.remove();
+        const newDiv = document.createElement('div');
+        newDiv.id = 'previewDiv';
+        newDiv.innerHTML = '<hr><strong>📄 Report Preview (same as PDF):</strong><br>' + preview.outerHTML;
+        document.querySelector('.card:last-child').appendChild(newDiv);
+    });
+</script>
+
+<p style="margin-top: 30px; font-size: 13px; color: gray;">
+🔍 <strong>Limitation notice:</strong> Real speaker voiceprint identification requires an external API (Azure/AssemblyAI). This demo uses manual name entry. To add real recognition, replace the "Recognize Voices" logic with microphone capture + a backend call. The rest (transcript area, PDF report) works fully.
+</p>
+</body>
+</html>
