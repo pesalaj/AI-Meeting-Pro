@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Meeting Assistant | Pesala Jayawardene</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1300px;
+            margin: 30px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2d3748; margin-top: 0; }
+        h2 { color: #4a5568; border-bottom: 3px solid #667eea; padding-bottom: 8px; display: inline-block; }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 8px 10px 8px 0;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        button.danger { background: #e53e3e; }
+        button.success { background: #48bb78; }
+        button.warning { background: #ed8936; }
+        button.admin { background: #2d3748; }
+        .enrolled-box {
+            background: #f7fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 10px;
+        }
+        .transcript {
+            background: #1a202c;
+            color: #e2e8f0;
+            border-radius: 12px;
+            padding: 16px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-top: 15px;
+        }
+        .transcript-line {
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .transcript-line:hover { background: #2d3748; }
+        .speaker-name { font-weight: bold; display: inline-block; min-width: 100px; }
+        .status {
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .status-active { background: #c6f6d5; color: #22543d; }
+        .status-inactive { background: #fed7d7; color: #742a2a; }
+        .flex-row { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .speaker-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        .speaker-tag {
+            background: #edf2f7;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .speaker-tag:hover { background: #cbd5e0; transform: scale(1.05); }
+        .timer {
+            font-size: 48px;
+            font-weight: bold;
+            font-family: monospace;
+            background: #2d3748;
+            color: #48bb78;
+            padding: 15px 25px;
+            border-radius: 15px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        .cost-box {
+            background: #fef5e7;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            border-left: 4px solid #ed8936;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+        }
+        .admin-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .admin-modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 400px;
+            max-width: 90%;
+        }
+        .admin-modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .rate-input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #cbd5e0;
+            border-radius: 5px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>🎙️ Voice Recognition Meeting Assistant</h1>
+        <button id="adminBtn" class="admin">🔐 Admin Area</button>
+    </div>
+    <p><strong>Developer:</strong> Pesala Jayawardene | © 2024 All Rights Reserved</p>
+    <p><strong>How it works:</strong> Register speakers → Start meeting (timer auto-starts) → Assign names to voices → End meeting → Print Cost (optional) → Generate Report</p>
+</div>
+
+<!-- Admin Modal -->
+<div id="adminModal" class="admin-modal">
+    <div class="admin-modal-content">
+        <h2>Admin Login</h2>
+        <input type="text" id="adminUsername" placeholder="Username" value="admin">
+        <input type="password" id="adminPassword" placeholder="Password">
+        <button id="adminLoginBtn">Login</button>
+        <button id="adminCloseBtn">Close</button>
+        <div id="adminError" style="color: red; margin-top: 10px;"></div>
+        
+        <div id="adminPanel" style="display: none; margin-top: 20px;">
+            <hr>
+            <h3>Rate Settings (per hour)</h3>
+            <label>0-1 hour: $<input type="number" id="rate0_1" class="rate-input" step="0.5" value="15.0"></label>
+            <label>1-2 hours: $<input type="number" id="rate1_2" class="rate-input" step="0.5" value="14.0"></label>
+            <label>2-4 hours: $<input type="number" id="rate2_4" class="rate-input" step="0.5" value="12.0"></label>
+            <label>Above 4 hours: $<input type="number" id="rateAbove4" class="rate-input" step="0.5" value="11.0"></label>
+            <button id="saveRatesBtn" class="success">💾 Save Rates</button>
+            <div id="rateSaveStatus" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📋 Step 1: Register Speakers</h2>
+    <button id="registerBtn" class="success">➕ Register New Speaker</button>
+    <button id="clearSpeakersBtn" class="danger">🗑️ Clear All Speakers</button>
+    
+    <div class="enrolled-box" id="speakersList">
+        <strong>Registered speakers:</strong> None yet. Click "Register New Speaker" to add.
+    </div>
+    <div id="registerStatus" class="status"></div>
+</div>
+
+<div class="card">
+    <h2>⏱️ Step 2: Meeting Timer & Cost</h2>
+    <div class="flex-row">
+        <div class="timer" id="timerDisplay">00:00:00</div>
+        <button id="startMeetingBtn">🔴 START MEETING & TIMER</button>
+        <button id="stopMeetingBtn" disabled>⏹️ STOP MEETING & TIMER</button>
+        <button id="printCostBtn" class="warning" disabled>💰 Print Cost</button>
+    </div>
+    <div id="costDisplay" class="cost-box" style="display: none;">
+        <strong>Meeting Cost:</strong> $<span id="costAmount">0.00</span>
+        <br><small>Duration: <span id="durationDisplay">0</span> hours (<span id="durationMinutes">0</span> minutes)</small>
+    </div>
+    <div id="meetingStatus" class="status status-inactive">Meeting not started</div>
+    
+    <div style="margin: 15px 0; padding: 10px; background: #fef5e7; border-radius: 10px;">
+        <strong>💡 During meeting:</strong> When you see "[NEW SPEAKER]" in the transcript, click on a registered name below to assign it. The assistant will remember that voice!
+    </div>
+    
+    <div class="speaker-list" id="quickAssignList"></div>
+    
+    <div class="transcript" id="transcriptArea">
+        <div style="color: #718096;">Meeting transcript will appear here...</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📄 Step 3: Generate Report</h2>
+    <button id="generateReportBtn">📑 GENERATE PROFESSIONAL PDF REPORT</button>
+    <div id="reportStatus" class="status"></div>
+</div>
+
+<div class="footer">
+    Developed by Pesala Jayawardene | © 2024 Voice Meeting Assistant | All Rights Reserved
+</div>
+
+<script>
+    // ========== SPEAKER RECOGNITION SYSTEM ==========
+    let registeredSpeakers = [];
+    let mediaStream = null;
+    let audioContext = null;
+    let analyserNode = null;
+    let isMeetingRunning = false;
+    let meetingTranscript = [];
+    let speechRecognition = null;
+    
+    // Timer variables
+    let meetingStartTime = null;
+    let meetingEndTime = null;
+    let timerInterval = null;
+    let meetingDurationHours = 0;
+    let meetingCost = 0;
+    let costCalculated = false;
+    
+    // Rate settings (defaults)
+    let rate0_1 = 15.0;
+    let rate1_2 = 14.0;
+    let rate2_4 = 12.0;
+    let rateAbove4 = 11.0;
+    
+    // Load saved rates from localStorage
+    function loadRates() {
+        if (localStorage.getItem('rate0_1')) rate0_1 = parseFloat(localStorage.getItem('rate0_1'));
+        if (localStorage.getItem('rate1_2')) rate1_2 = parseFloat(localStorage.getItem('rate1_2'));
+        if (localStorage.getItem('rate2_4')) rate2_4 = parseFloat(localStorage.getItem('rate2_4'));
+        if (localStorage.getItem('rateAbove4')) rateAbove4 = parseFloat(localStorage.getItem('rateAbove4'));
+        
+        document.getElementById('rate0_1').value = rate0_1;
+        document.getElementById('rate1_2').value = rate1_2;
+        document.getElementById('rate2_4').value = rate2_4;
+        document.getElementById('rateAbove4').value = rateAbove4;
+    }
+    
+    function saveRates() {
+        rate0_1 = parseFloat(document.getElementById('rate0_1').value);
+        rate1_2 = parseFloat(document.getElementById('rate1_2').value);
+        rate2_4 = parseFloat(document.getElementById('rate2_4').value);
+        rateAbove4 = parseFloat(document.getElementById('rateAbove4').value);
+        
+        localStorage.setItem('rate0_1', rate0_1);
+        localStorage.setItem('rate1_2', rate1_2);
+        localStorage.setItem('rate2_4', rate2_4);
+        localStorage.setItem('rateAbove4', rateAbove4);
+        
+        document.getElementById('rateSaveStatus').innerHTML = '✅ Rates saved!';
+        setTimeout(() => document.getElementById('rateSaveStatus').innerHTML = '', 2000);
+    }
+    
+    function calculateCost(hours) {
+        if (hours <= 1) return hours * rate0_1;
+        if (hours <= 2) return hours * rate1_2;
+        if (hours <= 4) return hours * rate2_4;
+        return hours * rateAbove4;
+    }
+    
+    function updateTimerDisplay() {
+        if (!meetingStartTime) return;
+        const now = meetingEndTime ? meetingEndTime : new Date();
+        const durationMs = now - meetingStartTime;
+        const hours = Math.floor(durationMs / 3600000);
+        const minutes = Math.floor((durationMs % 3600000) / 60000);
+        const seconds = Math.floor((durationMs % 60000) / 1000);
+        
+        document.getElementById('timerDisplay').innerHTML = 
+            `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+        
+        meetingDurationHours = durationMs / 3600000;
+        const cost = calculateCost(meetingDurationHours);
+        
+        if (costCalculated) {
+            document.getElementById('costAmount').innerText = meetingCost.toFixed(2);
+        }
+    }
+    
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (isMeetingRunning && meetingStartTime && !meetingEndTime) {
+                updateTimerDisplay();
+            }
+        }, 1000);
+    }
+    
+    // Voice feature extraction
+    async function extractVoiceFeatures(durationMs = 1500) {
+        if (!analyserNode) return null;
+        let features = [];
+        const startTime = Date.now();
+        
+        while (Date.now() - startTime < durationMs) {
+            const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+            analyserNode.getByteFrequencyData(freqData);
+            
+            let spectralCentroid = 0;
+            let totalEnergy = 0;
+            for (let i = 0; i < freqData.length; i++) {
+                const energy = freqData[i];
+                totalEnergy += energy;
+                spectralCentroid += i * energy;
+            }
+            if (totalEnergy > 0) spectralCentroid /= totalEnergy;
+            
+            const timeData = new Float32Array(analyserNode.fftSize);
+            analyserNode.getFloatTimeDomainData(timeData);
+            let rms = 0, zcr = 0;
+            for (let i = 0; i < timeData.length; i++) {
+                rms += timeData[i] * timeData[i];
+                if (i > 0 && timeData[i] * timeData[i-1] < 0) zcr++;
+            }
+            rms = Math.sqrt(rms / timeData.length);
+            zcr = zcr / timeData.length;
+            
+            features.push({ centroid: spectralCentroid, rms, zcr, energy: totalEnergy });
+            await new Promise(r => setTimeout(r, 100));
+        }
+        
+        if (features.length === 0) return null;
+        return {
+            centroid: features.reduce((a,b) => a + b.centroid, 0) / features.length,
+            rms: features.reduce((a,b) => a + b.rms, 0) / features.length,
+            zcr: features.reduce((a,b) => a + b.zcr, 0) / features.length,
+            energy: features.reduce((a,b) => a + b.energy, 0) / features.length
+        };
+    }
+    
+    function compareVoices(f1, f2) {
+        if (!f1 || !f2) return Infinity;
+        return Math.abs(f1.centroid - f2.centroid)/100 + Math.abs(f1.rms - f2.rms)*5 + Math.abs(f1.zcr - f2.zcr)*10;
+    }
+    
+    async function identifySpeaker() {
+        if (registeredSpeakers.length === 0) return null;
+        const currentFeatures = await extractVoiceFeatures(1200);
+        if (!currentFeatures) return null;
+        
+        let bestMatch = null, bestScore = Infinity;
+        for (let speaker of registeredSpeakers) {
+            if (speaker.voiceProfile?.avgFeatures) {
+                const score = compareVoices(currentFeatures, speaker.voiceProfile.avgFeatures);
+                if (score < bestScore) { bestScore = score; bestMatch = speaker.name; }
+            }
+        }
+        return bestScore < 2.5 ? bestMatch : null;
+    }
+    
+    async function registerSpeaker(name) {
+        const statusDiv = document.getElementById('registerStatus');
+        statusDiv.innerHTML = `🎙️ Recording ${name}... Please speak naturally for 3 seconds.`;
+        
+        if (!analyserNode) await initMicrophone();
+        const features = await extractVoiceFeatures(3000);
+        if (!features) {
+            statusDiv.innerHTML = "❌ Failed to capture voice.";
+            return false;
+        }
+        
+        registeredSpeakers.push({ name, voiceProfile: { avgFeatures: features, created: new Date() } });
+        updateSpeakersList();
+        statusDiv.innerHTML = `✅ Speaker "${name}" registered successfully!`;
+        setTimeout(() => statusDiv.innerHTML = "", 2000);
+        return true;
+    }
+    
+    function updateSpeakersList() {
+        const container = document.getElementById('speakersList');
+        const quickList = document.getElementById('quickAssignList');
+        
+        if (registeredSpeakers.length === 0) {
+            container.innerHTML = '<strong>Registered speakers:</strong> None yet.';
+            quickList.innerHTML = '<div style="color: #718096;">No speakers registered yet.</div>';
+            return;
+        }
+        
+        container.innerHTML = `<strong>✅ Registered speakers (${registeredSpeakers.length}):</strong> ${registeredSpeakers.map(s => s.name).join(', ')}`;
+        quickList.innerHTML = '<strong>🎯 Quick assign:</strong> ';
+        registeredSpeakers.forEach(speaker => {
+            const btn = document.createElement('button');
+            btn.textContent = speaker.name;
+            btn.style.background = "#48bb78";
+            btn.style.padding = "6px 15px";
+            btn.style.fontSize = "12px";
+            btn.onclick = () => assignLastUnknownSpeaker(speaker.name);
+            quickList.appendChild(btn);
+        });
+    }
+    
+    function assignLastUnknownSpeaker(speakerName) {
+        for (let i = meetingTranscript.length - 1; i >= 0; i--) {
+            if (meetingTranscript[i].speaker === "Unknown") {
+                meetingTranscript[i].speaker = speakerName;
+                refreshTranscriptDisplay();
+                captureVoiceForSpeaker(speakerName);
+                break;
+            }
+        }
+    }
+    
+    async function captureVoiceForSpeaker(speakerName) {
+        const features = await extractVoiceFeatures(1500);
+        const speaker = registeredSpeakers.find(s => s.name === speakerName);
+        if (speaker && features) {
+            speaker.voiceProfile.avgFeatures = features;
+        }
+    }
+    
+    function refreshTranscriptDisplay() {
+        const container = document.getElementById('transcriptArea');
+        if (meetingTranscript.length === 0) {
+            container.innerHTML = '<div style="color: #718096;">No speech detected yet.</div>';
+            return;
+        }
+        container.innerHTML = meetingTranscript.map(entry => {
+            const color = entry.speaker === "Unknown" ? "#ed8936" : "#48bb78";
+            return `<div class="transcript-line">
+                        <span class="speaker-name" style="color: ${color};">[${entry.timestamp}] ${entry.speaker}:</span>
+                        <span>${entry.text}</span>
+                        ${entry.speaker === "Unknown" ? '<span style="color: #ed8936; font-size: 11px;"> (click name above to assign)</span>' : ''}
+                    </div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    async function initMicrophone() {
+        if (mediaStream) mediaStream.getTracks().forEach(track => track.stop());
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (audioContext) await audioContext.close();
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        analyserNode = audioContext.createAnalyser();
+        analyserNode.fftSize = 2048;
+        source.connect(analyserNode);
+        await audioContext.resume();
+    }
+    
+    async function startMeeting() {
+        if (registeredSpeakers.length === 0) {
+            alert("Please register at least one speaker first.");
+            return;
+        }
+        
+        await initMicrophone();
+        isMeetingRunning = true;
+        meetingStartTime = new Date();
+        meetingEndTime = null;
+        costCalculated = false;
+        meetingCost = 0;
+        document.getElementById('costDisplay').style.display = 'none';
+        document.getElementById('printCostBtn').disabled = false;
+        startTimer();
+        
+        document.getElementById('startMeetingBtn').disabled = true;
+        document.getElementById('stopMeetingBtn').disabled = false;
+        document.getElementById('meetingStatus').innerHTML = '🔴 Meeting active - Timer running';
+        document.getElementById('meetingStatus').className = 'status status-active';
+        
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("Please use Chrome for speech recognition.");
+            return;
+        }
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        speechRecognition = new SpeechRecognition();
+        speechRecognition.continuous = true;
+        speechRecognition.interimResults = false;
+        speechRecognition.lang = 'en-US';
+        
+        speechRecognition.onresult = async (event) => {
+            const result = event.results[event.results.length - 1];
+            const text = result[0].transcript.trim();
+            if (!text) return;
+            
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const identified = await identifySpeaker();
+            let speakerName = identified || (registeredSpeakers.length === 1 ? registeredSpeakers[0].name : "Unknown");
+            
+            meetingTranscript.push({ speaker: speakerName, text, timestamp });
+            refreshTranscriptDisplay();
+        };
+        
+        speechRecognition.start();
+    }
+    
+    function stopMeeting() {
+        if (speechRecognition) {
+            speechRecognition.stop();
+            speechRecognition = null;
+        }
+        isMeetingRunning = false;
+        meetingEndTime = new Date();
+        if (timerInterval) clearInterval(timerInterval);
+        updateTimerDisplay();
+        
+        document.getElementById('startMeetingBtn').disabled = false;
+        document.getElementById('stopMeetingBtn').disabled = true;
+        document.getElementById('meetingStatus').innerHTML = '⏹️ Meeting stopped';
+        document.getElementById('meetingStatus').className = 'status status-inactive';
+    }
+    
+    function printCost() {
+        if (!meetingEndTime && isMeetingRunning) {
+            alert("Please stop the meeting first.");
+            return;
+        }
+        if (!meetingStartTime) {
+            alert("No meeting recorded.");
+            return;
+        }
+        
+        const durationHours = meetingDurationHours;
+        meetingCost = calculateCost(durationHours);
+        costCalculated = true;
+        
+        const hours = Math.floor(durationHours);
+        const minutes = Math.floor((durationHours % 1) * 60);
+        
+        document.getElementById('costAmount').innerText = meetingCost.toFixed(2);
+        document.getElementById('durationDisplay').innerText = durationHours.toFixed(2);
+        document.getElementById('durationMinutes').innerText = minutes;
+        document.getElementById('costDisplay').style.display = 'block';
+        
+        document.getElementById('meetingStatus').innerHTML = `💰 Cost calculated: $${meetingCost.toFixed(2)} for ${hours}h ${minutes}m`;
+    }
+    
+    function clearAllSpeakers() {
+        if (isMeetingRunning) stopMeeting();
+        registeredSpeakers = [];
+        meetingTranscript = [];
+        meetingStartTime = null;
+        meetingEndTime = null;
+        meetingCost = 0;
+        costCalculated = false;
+        document.getElementById('costDisplay').style.display = 'none';
+        updateSpeakersList();
+        refreshTranscriptDisplay();
+        document.getElementById('timerDisplay').innerHTML = '00:00:00';
+        if (timerInterval) clearInterval(timerInterval);
+    }
+    
+    function generateReport() {
+        if (meetingTranscript.length === 0 && meetingStartTime === null) {
+            alert("No meeting data. Start a meeting first.");
+            return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const now = new Date();
+        
+        // Header
+        doc.setFillColor(102, 126, 234);
+        doc.rect(0, 0, 210, 50, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.text("MEETING REPORT", 20, 28);
+        doc.setFontSize(10);
+        doc.text("Voice Recognition Assistant", 20, 38);
+        doc.text("Developed by Pesala Jayawardene", 20, 46);
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        doc.text(`Date: ${now.toLocaleDateString()}`, 20, 65);
+        doc.text(`Time: ${now.toLocaleTimeString()}`, 20, 72);
+        
+        // Meeting duration
+        if (meetingStartTime) {
+            const startStr = meetingStartTime.toLocaleTimeString();
+            const endStr = meetingEndTime ? meetingEndTime.toLocaleTimeString() : "Ongoing";
+            doc.text(`Meeting started: ${startStr}`, 20, 82);
+            doc.text(`Meeting ended: ${endStr}`, 20, 89);
+            const durationHrs = meetingDurationHours;
+            doc.text(`Duration: ${Math.floor(durationHrs)}h ${Math.floor((durationHrs % 1) * 60)}m`, 20, 96);
+        }
+        
+        // Cost if calculated
+        let y = 106;
+        if (costCalculated && meetingCost > 0) {
+            doc.setFillColor(254, 245, 231);
+            doc.roundedRect(20, y-4, 170, 12, 3, 3, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(237, 137, 54);
+            doc.text(`Meeting Cost: $${meetingCost.toFixed(2)} (${rateDescription()})`, 25, y+4);
+            y += 16;
+        }
+        
+        // Attendees
+        const attendees = registeredSpeakers.map(s => s.name).join(', ');
+        doc.setFillColor(247, 250, 252);
+        doc.roundedRect(20, y-4, 170, 10, 3, 3, 'F');
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(0, 0, 0);
+        doc.text("ATTENDEES:", 25, y+4);
+        doc.setFont("helvetica", "normal");
+        doc.text(attendees || "None", 65, y+4);
+        y += 14;
+        
+        // Transcript
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(102, 126, 234);
+        doc.text("Meeting Transcript", 20, y);
+        y += 7;
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        
+        for (let entry of meetingTranscript.slice(0, 30)) {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.text(`[${entry.timestamp}] ${entry.speaker}: ${entry.text.substring(0, 85)}`, 25, y);
+            y += 5;
+        }
+        
+        // Footer
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`© 2024 Pesala Jayawardene - Voice Meeting Assistant`, 20, 285);
+        
+        doc.save(`Meeting_Report_${now.toISOString().slice(0,19)}.pdf`);
+        document.getElementById('reportStatus').innerHTML = "✅ PDF Report generated!";
+        setTimeout(() => document.getElementById('reportStatus').innerHTML = "", 3000);
+    }
+    
+    function rateDescription() {
+        return `$${rate0_1}/0-1h, $${rate1_2}/1-2h, $${rate2_4}/2-4h, $${rateAbove4}/4h+`;
+    }
+    
+    // Admin modal
+    const modal = document.getElementById('adminModal');
+    document.getElementById('adminBtn').onclick = () => modal.style.display = 'flex';
+    document.getElementById('adminCloseBtn').onclick = () => modal.style.display = 'none';
+    document.getElementById('adminLoginBtn').onclick = () => {
+        const user = document.getElementById('adminUsername').value;
+        const pass = document.getElementById('adminPassword').value;
+        if (user === "admin" && pass === "admin123") {
+            document.getElementById('adminPanel').style.display = 'block';
+            document.getElementById('adminError').innerHTML = '';
+            loadRates();
+        } else {
+            document.getElementById('adminError').innerHTML = 'Invalid credentials';
+        }
+    };
+    document.getElementById('saveRatesBtn').onclick = saveRates;
+    
+    // Event listeners
+    document.getElementById('registerBtn').onclick = () => {
+        const name = prompt("Enter speaker's full name:");
+        if (name?.trim()) registerSpeaker(name.trim());
+    };
+    document.getElementById('clearSpeakersBtn').onclick = clearAllSpeakers;
+    document.getElementById('startMeetingBtn').onclick = startMeeting;
+    document.getElementById('stopMeetingBtn').onclick = stopMeeting;
+    document.getElementById('printCostBtn').onclick = printCost;
+    document.getElementById('generateReportBtn').onclick = generateReport;
+    
+    window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+    window.onbeforeunload = () => {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        if (speechRecognition) speechRecognition.abort();
+    };
+    
+    loadRates();
+</script>
+</body>
+</html>
