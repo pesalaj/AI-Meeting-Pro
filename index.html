@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peter AI Pro | Enterprise Meeting Assistant</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Login Overlay */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 100%);
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 32px;
+            padding: 48px;
+            width: 450px;
+            max-width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.6s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-icon {
+            font-size: 64px;
+            color: #2c5364;
+            margin-bottom: 16px;
+        }
+
+        .login-header h2 {
+            font-size: 28px;
+            color: #1a3c5c;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: #718096;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #2c5364;
+            box-shadow: 0 0 0 3px rgba(44, 83, 100, 0.1);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #2c5364 0%, #203a43 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 16px;
+            text-align: center;
+            font-size: 13px;
+            display: none;
+        }
+
+        /* Main App (Hidden until login) */
+        .main-app {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* Professional Dashboard */
+        .dashboard {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: white;
+            border-radius: 20px;
+            padding: 16px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo-area h1 {
+            font-size: 24px;
+            color: #1a3c5c;
+        }
+
+        .logo-area p {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .user-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .user-info {
+            text-align: right;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .logout-btn {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c53030;
+            transform: translateY(-1px);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #2c5364;
+        }
+
+        .stat-info h3 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a3c5c;
+        }
+
+        .stat-info p {
+            color: #718096;
+            font-size: 13px;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1000px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .card-header h3 {
+            font-size: 18px;
+            color: #1a3c5c;
+            font-weight: 600;
+        }
+
+        .card-header i {
+            color: #2c5364;
+            font-size: 20px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2c5364 0%, #203a43 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(44, 83, 100, 0.3);
+        }
+
+        .btn-success {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #e53e3e;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ed8936;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #718096;
+            color: white;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        /* Timer Display */
+        .timer-display {
+            background: linear-gradient(135deg, #1a3c5c 0%, #2c5364 100%);
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .timer-digits {
+            font-size: 56px;
+            font-weight: 700;
+            font-family: monospace;
+            color: #fbbf24;
+            letter-spacing: 4px;
+        }
+
+        .timer-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        /* Transcript Area */
+        .transcript-area {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 16px;
+            height: 350px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .transcript-line {
+            margin-bottom: 12px;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(74, 158, 255, 0.08);
+            border-left: 3px solid #4a9eff;
+        }
+
+        .transcript-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .speaker-name {
+            font-weight: 600;
+            color: #4a9eff;
+        }
+
+        .timestamp {
+            font-size: 11px;
+            color: #718096;
+        }
+
+        .original-text {
+            color: #ffd966;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+
+        .translated-text {
+            color: #90ee90;
+            font-size: 11px;
+        }
+
+        /* Speaker List */
+        .speaker-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .speaker-tag {
+            background: #edf2f7;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .speaker-tag:hover {
+            background: #2c5364;
+            color: white;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Info Box */
+        .info-box {
+            background: #e8f4fd;
+            padding: 14px;
+            border-radius: 12px;
+            margin-top: 16px;
+            border-left: 4px solid #2c5364;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 32px;
+            width: 500px;
+            max-width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #1a3c5c;
+        }
+
+        .modal-content input,
+        .modal-content select,
+        .modal-content textarea {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Login Overlay -->
+<div id="loginOverlay" class="login-overlay">
+    <div class="login-container">
+        <div class="login-header">
+            <div class="login-icon">
+                <i class="fas fa-robot"></i>
+            </div>
+            <h2>Peter AI Pro</h2>
+            <p>Enterprise Meeting Assistant</p>
+        </div>
+        <div class="input-group">
+            <label><i class="fas fa-user"></i> Username</label>
+            <input type="text" id="loginUsername" placeholder="Enter your username">
+        </div>
+        <div class="input-group">
+            <label><i class="fas fa-lock"></i> Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter your password">
+        </div>
+        <button class="login-btn" id="loginBtn">
+            <i class="fas fa-sign-in-alt"></i> Login
+        </button>
+        <div id="loginError" class="login-error">
+            <i class="fas fa-exclamation-triangle"></i> Invalid username or password
+        </div>
+        <div style="text-align: center; margin-top: 20px; font-size: 12px; color: #a0aec0;">
+            Demo credentials: admin / admin123
+        </div>
+    </div>
+</div>
+
+<!-- Main Application -->
+<div id="mainApp" class="main-app">
+    <div class="dashboard">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="logo-area">
+                <h1><i class="fas fa-microphone-alt"></i> Peter AI Pro</h1>
+                <p>Enterprise Meeting Intelligence Platform</p>
+            </div>
+            <div class="user-area">
+                <div class="user-info">
+                    <div class="user-name" id="currentUser">Admin User</div>
+                    <div class="user-role">Administrator</div>
+                </div>
+                <button class="logout-btn" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-info">
+                    <h3 id="speakerCount">0</h3>
+                    <p>Registered Speakers</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
+                <div class="stat-info">
+                    <h3 id="meetingCount">0</h3>
+                    <p>Meetings Completed</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-language"></i></div>
+                <div class="stat-info">
+                    <h3 id="langCount">15</h3>
+                    <p>Languages Supported</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon"><i class="fas fa-file-pdf"></i></div>
+                <div class="stat-info">
+                    <h3 id="reportCount">0</h3>
+                    <p>Reports Generated</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left Column: Meeting Controls -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-calendar-alt"></i> Meeting Controls</h3>
+                    <i class="fas fa-robot"></i>
+                </div>
+                
+                <div class="timer-display">
+                    <div class="timer-digits" id="timerDisplay">00:00:00</div>
+                    <div class="timer-label">Meeting Duration</div>
+                </div>
+                
+                <div class="btn-group">
+                    <button id="startMeetingBtn" class="btn btn-success"><i class="fas fa-play"></i> Start Meeting</button>
+                    <button id="stopMeetingBtn" class="btn btn-danger" disabled><i class="fas fa-stop"></i> Stop Meeting</button>
+                    <button id="printCostBtn" class="btn btn-warning" disabled><i class="fas fa-dollar-sign"></i> Calculate Cost</button>
+                </div>
+                
+                <div id="meetingStatus" class="status-badge status-inactive" style="margin-top: 15px;">
+                    <i class="fas fa-circle"></i> Meeting Not Started
+                </div>
+                
+                <div id="costDisplay" style="display: none;" class="info-box">
+                    <strong><i class="fas fa-receipt"></i> Cost Details:</strong>
+                    <div id="costDetails"></div>
+                    <hr style="margin: 10px 0;">
+                    <strong>Total: $<span id="costAmount">0.00</span></strong>
+                </div>
+            </div>
+
+            <!-- Right Column: Office & Speaker Info -->
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-building"></i> Organization Details</h3>
+                    <i class="fas fa-edit"></i>
+                </div>
+                
+                <button id="officeInfoBtn" class="btn btn-primary"><i class="fas fa-pen"></i> Edit Organization Info</button>
+                <div id="officeInfoDisplay" class="info-box" style="display: none; margin-top: 16px;"></div>
+                
+                <div style="margin-top: 20px;">
+                    <h4><i class="fas fa-users"></i> Speaker Management</h4>
+                    <div class="btn-group">
+                        <button id="registerBtn" class="btn btn-primary"><i class="fas fa-plus"></i> Register Speaker</button>
+                        <button id="clearSpeakersBtn" class="btn btn-secondary"><i class="fas fa-trash"></i> Clear All</button>
+                        <button id="langSelectBtn" class="btn btn-primary"><i class="fas fa-globe"></i> Language</button>
+                    </div>
+                    <div id="speakersList" class="speaker-list" style="margin-top: 15px;">
+                        <span style="color: #718096;">No speakers registered</span>
+                    </div>
+                </div>
+                
+                <div id="quickAssignList" class="speaker-list" style="margin-top: 10px;"></div>
+            </div>
+        </div>
+
+        <!-- Transcript Section -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-comment-dots"></i> Live Transcript & Translation</h3>
+                <i class="fas fa-language"></i>
+            </div>
+            <div class="transcript-area" id="transcriptArea">
+                <div style="color: #718096; text-align: center; padding: 40px;">
+                    <i class="fas fa-microphone-slash" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>
+                    Start a meeting to begin transcription
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Generation -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-file-alt"></i> Report Generation</h3>
+                <i class="fas fa-download"></i>
+            </div>
+            <div class="btn-group">
+                <button id="generateReportBtn" class="btn btn-primary"><i class="fas fa-file-pdf"></i> Generate Professional PDF Report</button>
+            </div>
+            <div id="reportStatus" class="status-badge status-inactive" style="margin-top: 15px;">
+                <i class="fas fa-info-circle"></i> Ready to generate report
+            </div>
+        </div>
+
+        <div class="footer">
+            <i class="fas fa-copyright"></i> 2024 Peter AI Pro | Software Developed By: Pesala Jayawardene | All Rights Reserved
+        </div>
+    </div>
+</div>
+
+<!-- Office Modal -->
+<div id="officeModal" class="modal">
+    <div class="modal-content">
+        <h3><i class="fas fa-building"></i> Organization Information</h3>
+        <label>Office Name:</label>
+        <input type="text" id="officeName" placeholder="e.g., ABC Corporation">
+        <label>Office Address:</label>
+        <textarea id="officeAddress" rows="3" placeholder="Full office address"></textarea>
+        <label>Type of Meeting:</label>
+        <input type="text" id="meetingType" placeholder="e.g., Board Meeting, Project Review">
+        <div class="btn-group">
+            <button id="saveOfficeBtn" class="btn btn-primary">Save</button>
+            <button id="closeOfficeBtn" class="btn btn-secondary">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- Language Modal -->
+<div id="langModal" class="modal">
+    <div class="modal-content">
+        <h3><i class="fas fa-globe"></i> Select Language</h3>
+        <div id="languageGrid" style="display: grid; grid-template-columns: repeat(2,1fr); gap: 10px;"></div>
+        <button id="closeLangBtn" class="btn btn-secondary" style="margin-top: 20px;">Close</button>
+    </div>
+</div>
+
+<script>
+    // ========== PETER AI PRO - COMPLETE SYSTEM ==========
+    
+    // User credentials
+    const validUsers = {
+        'admin': 'admin123',
+        'pesala': 'pesala123',
+        'user': 'user123'
+    };
+    
+    let currentLoggedInUser = null;
+    
+    // Application state
+    let registeredSpeakers = [];
+    let meetingTranscript = [];
+    let isMeetingRunning = false;
+    let meetingStartTime = null, meetingEndTime = null;
+    let timerInterval = null;
+    let meetingDurationHours = 0;
+    let costCalculated = false;
+    let meetingCost = 0;
+    let costDetails = [];
+    let languagesUsed = new Set();
+    let speechRecognition = null;
+    let mediaStream = null, audioContext = null, analyserNode = null;
+    let currentLanguage = 'en';
+    
+    // Auto-save
+    let autoSaveInterval = 1;
+    let autoSaveTimer = null;
+    
+    // Translation pricing
+    let perLanguageRate = 3.0;
+    let allLanguagesRate = 50.0;
+    
+    // Office info
+    let officeInfo = { name: '', address: '', meetingType: '' };
+    
+    // Statistics
+    let meetingCount = 0;
+    let reportCount = 0;
+    
+    // Language database
+    const languages = {
+        'en': { name: 'English', native: 'English' },
+        'si': { name: 'Sinhala', native: 'සිංහල' },
+        'ta': { name: 'Tamil', native: 'தமிழ்' },
+        'es': { name: 'Spanish', native: 'Español' },
+        'fr': { name: 'French', native: 'Français' },
+        'de': { name: 'German', native: 'Deutsch' },
+        'it': { name: 'Italian', native: 'Italiano' },
+        'pt': { name: 'Portuguese', native: 'Português' },
+        'ru': { name: 'Russian', native: 'Русский' },
+        'zh': { name: 'Chinese', native: '中文' },
+        'ja': { name: 'Japanese', native: '日本語' },
+        'ko': { name: 'Korean', native: '한국어' },
+        'ar': { name: 'Arabic', native: 'العربية' },
+        'hi': { name: 'Hindi', native: 'हिन्दी' },
+        'bn': { name: 'Bengali', native: 'বাংলা' }
+    };
+    
+    // Translation helper
+    function translateToEnglish(text, sourceLang) {
+        if (sourceLang === 'en') return text;
+        const translations = {
+            'si': { 'ආයුබෝවන්': 'Hello', 'ස්තුතියි': 'Thank you', 'ඔව්': 'Yes', 'නැහැ': 'No' },
+            'ta': { 'வணக்கம்': 'Hello', 'நன்றி': 'Thank you', 'ஆம்': 'Yes', 'இல்லை': 'No' }
+        };
+        let translated = text;
+        if (translations[sourceLang]) {
+            for (let [key, value] of Object.entries(translations[sourceLang])) {
+                translated = translated.replace(new RegExp(key, 'gi'), value);
+            }
+        }
+        if (translated === text) translated = `[${languages[sourceLang]?.name}] ${text}`;
+        return translated;
+    }
+    
+    function detectLanguage(text) {
+        if (/[\u0D80-\u0DFF]/.test(text)) return 'si';
+        if (/[\u0B80-\u0BFF]/.test(text)) return 'ta';
+        return currentLanguage;
+    }
+    
+    // Load/Save functions
+    function loadData() {
+        if (localStorage.getItem('registeredSpeakers')) registeredSpeakers = JSON.parse(localStorage.getItem('registeredSpeakers'));
+        if (localStorage.getItem('officeInfo')) officeInfo = JSON.parse(localStorage.getItem('officeInfo'));
+        if (localStorage.getItem('meetingCount')) meetingCount = parseInt(localStorage.getItem('meetingCount'));
+        if (localStorage.getItem('reportCount')) reportCount = parseInt(localStorage.getItem('reportCount'));
+        if (localStorage.getItem('currentLanguage')) currentLanguage = localStorage.getItem('currentLanguage');
+        updateStats();
+        updateSpeakersList();
+        displayOfficeInfo();
+    }
+    
+    function saveData() {
+        localStorage.setItem('registeredSpeakers', JSON.stringify(registeredSpeakers));
+        localStorage.setItem('officeInfo', JSON.stringify(officeInfo));
+        localStorage.setItem('meetingCount', meetingCount);
+        localStorage.setItem('reportCount', reportCount);
+        localStorage.setItem('currentLanguage', currentLanguage);
+    }
+    
+    function updateStats() {
+        document.getElementById('speakerCount').textContent = registeredSpeakers.length;
+        document.getElementById('meetingCount').textContent = meetingCount;
+        document.getElementById('reportCount').textContent = reportCount;
+        document.getElementById('langCount').textContent = Object.keys(languages).length;
+    }
+    
+    function displayOfficeInfo() {
+        if (officeInfo.name || officeInfo.address || officeInfo.meetingType) {
+            document.getElementById('officeInfoDisplay').innerHTML = `
+                <i class="fas fa-building"></i> <strong>${officeInfo.name || 'N/A'}</strong><br>
+                <i class="fas fa-location-dot"></i> ${officeInfo.address || 'Address not set'}<br>
+                <i class="fas fa-tag"></i> ${officeInfo.meetingType || 'Meeting type not specified'}
+            `;
+            document.getElementById('officeInfoDisplay').style.display = 'block';
+        }
+    }
+    
+    function saveOfficeInfo() {
+        officeInfo = {
+            name: document.getElementById('officeName').value,
+            address: document.getElementById('officeAddress').value,
+            meetingType: document.getElementById('meetingType').value
+        };
+        saveData();
+        displayOfficeInfo();
+        document.getElementById('officeModal').style.display = 'none';
+    }
+    
+    function updateSpeakersList() {
+        const container = document.getElementById('speakersList');
+        const quickList = document.getElementById('quickAssignList');
+        if (registeredSpeakers.length === 0) {
+            container.innerHTML = '<span style="color: #718096;">No speakers registered</span>';
+            quickList.innerHTML = '';
+            return;
+        }
+        container.innerHTML = registeredSpeakers.map(s => 
+            `<span class="speaker-tag"><i class="fas fa-user"></i> ${s.name}</span>`
+        ).join('');
+        quickList.innerHTML = '<strong style="font-size:12px;">Assign to Unknown:</strong> ';
+        registeredSpeakers.forEach(speaker => {
+            const btn = document.createElement('button');
+            btn.className = 'speaker-tag';
+            btn.innerHTML = `<i class="fas fa-tag"></i> ${speaker.name}`;
+            btn.onclick = () => assignLastUnknown(speaker.name);
+            quickList.appendChild(btn);
+        });
+        updateStats();
+    }
+    
+    function assignLastUnknown(speakerName) {
+        for (let i = meetingTranscript.length - 1; i >= 0; i--) {
+            if (meetingTranscript[i].speaker === "Unknown") {
+                meetingTranscript[i].speaker = speakerName;
+                refreshTranscript();
+                break;
+            }
+        }
+    }
+    
+    function refreshTranscript() {
+        const container = document.getElementById('transcriptArea');
+        if (meetingTranscript.length === 0) {
+            container.innerHTML = '<div style="color: #718096; text-align: center; padding: 40px;"><i class="fas fa-microphone-slash" style="font-size: 48px; margin-bottom: 16px; display: block;"></i>No transcript yet. Start a meeting.</div>';
+            return;
+        }
+        container.innerHTML = meetingTranscript.map(entry => `
+            <div class="transcript-line">
+                <div class="transcript-header">
+                    <span class="speaker-name"><i class="fas fa-user-circle"></i> ${entry.speaker}</span>
+                    <span class="timestamp"><i class="far fa-clock"></i> ${entry.timestamp}</span>
+                </div>
+                <div class="original-text"><i class="fas fa-comment"></i> ${entry.originalText}</div>
+                ${entry.translatedText !== entry.originalText ? `<div class="translated-text"><i class="fas fa-language"></i> English: ${entry.translatedText}</div>` : ''}
+            </div>
+        `).join('');
+        container.scrollTop = container.scrollHeight;
+    }
+    
+    async function registerSpeaker(name) {
+        const statusDiv = document.getElementById('registerStatus');
+        if (!statusDiv) {
+            const msg = document.createElement('div');
+            msg.id = 'registerStatus';
+            msg.className = 'status-badge status-inactive';
+            document.querySelector('#registerBtn').parentNode.appendChild(msg);
+        }
+        const status = document.getElementById('registerStatus');
+        if (status) status.innerHTML = `<i class="fas fa-microphone"></i> Recording ${name}...`;
+        if (!analyserNode) await initMicrophone();
+        const features = await extractVoiceFeatures(3000);
+        if (features) {
+            registeredSpeakers.push({ name, voiceProfile: features });
+            saveData();
+            updateSpeakersList();
+            if (status) status.innerHTML = `<i class="fas fa-check-circle"></i> ${name} registered!`;
+            setTimeout(() => { if (status) status.innerHTML = ''; }, 2000);
+            return true;
+        }
+        return false;
+    }
+    
+    async function extractVoiceFeatures(durationMs = 1500) {
+        if (!analyserNode) return null;
+        let features = [];
+        const startTime = Date.now();
+        while (Date.now() - startTime < durationMs) {
+            const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+            analyserNode.getByteFrequencyData(freqData);
+            let spectralCentroid = 0, totalEnergy = 0;
+            for (let i = 0; i < freqData.length; i++) {
+                totalEnergy += freqData[i];
+                spectralCentroid += i * freqData[i];
+            }
+            if (totalEnergy > 0) spectralCentroid /= totalEnergy;
+            features.push({ centroid: spectralCentroid });
+            await new Promise(r => setTimeout(r, 100));
+        }
+        if (features.length === 0) return null;
+        return { centroid: features.reduce((a,b) => a + b.centroid, 0) / features.length };
+    }
+    
+    async function identifySpeaker() {
+        if (registeredSpeakers.length === 0) return null;
+        const currentFeatures = await extractVoiceFeatures(1200);
+        if (!currentFeatures) return null;
+        let bestMatch = null, bestScore = Infinity;
+        for (let speaker of registeredSpeakers) {
+            if (speaker.voiceProfile) {
+                const score = Math.abs(currentFeatures.centroid - speaker.voiceProfile.centroid);
+                if (score < bestScore) { bestScore = score; bestMatch = speaker.name; }
+            }
+        }
+        return bestScore < 50 ? bestMatch : null;
+    }
+    
+    async function initMicrophone() {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (audioContext) await audioContext.close();
+        audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(mediaStream);
+        analyserNode = audioContext.createAnalyser();
+        analyserNode.fftSize = 2048;
+        source.connect(analyserNode);
+        await audioContext.resume();
+    }
+    
+    function updateTimer() {
+        if (!meetingStartTime) return;
+        const now = meetingEndTime || new Date();
+        const durationMs = now - meetingStartTime;
+        const hours = Math.floor(durationMs / 3600000);
+        const minutes = Math.floor((durationMs % 3600000) / 60000);
+        const seconds = Math.floor((durationMs % 60000) / 1000);
+        document.getElementById('timerDisplay').innerHTML = `${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+        meetingDurationHours = durationMs / 3600000;
+    }
+    
+    function startTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (isMeetingRunning && meetingStartTime && !meetingEndTime) updateTimer();
+        }, 1000);
+    }
+    
+    function calculateBaseCost(hours) {
+        const rate0_1 = 15, rate1_2 = 14, rate2_4 = 12, rateAbove4 = 11;
+        if (hours <= 1) return hours * rate0_1;
+        if (hours <= 2) return hours * rate1_2;
+        if (hours <= 4) return hours * rate2_4;
+        return hours * rateAbove4;
+    }
+    
+    function calculateTranslationCost() {
+        const uniqueLanguages = new Set();
+        for (let entry of meetingTranscript) {
+            if (entry.language && entry.language !== 'en') uniqueLanguages.add(entry.language);
+        }
+        const languageCount = uniqueLanguages.size;
+        let cost = 0, details = [];
+        if (languageCount === 0) {
+            details.push("No translation needed");
+        } else if (languageCount >= 15) {
+            cost = allLanguagesRate;
+            details.push(`All languages to English: $${allLanguagesRate}`);
+        } else {
+            cost = languageCount * perLanguageRate * meetingDurationHours;
+            details.push(`${languageCount} language(s) × $${perLanguageRate}/hour × ${meetingDurationHours.toFixed(2)}h = $${cost.toFixed(2)}`);
+        }
+        return { cost, details };
+    }
+    
+    function calculateTotalCost() {
+        const baseCost = calculateBaseCost(meetingDurationHours);
+        const translation = calculateTranslationCost();
+        const total = baseCost + translation.cost;
+        costDetails = [
+            `Duration: ${meetingDurationHours.toFixed(2)} hours - Base cost: $${baseCost.toFixed(2)}`,
+            ...translation.details,
+            `TOTAL: $${total.toFixed(2)}`
+        ];
+        return { total, details: costDetails };
+    }
+    
+    async function startMeeting() {
+        if (registeredSpeakers.length === 0) {
+            alert("Please register at least one speaker first.");
+            return;
+        }
+        await initMicrophone();
+        isMeetingRunning = true;
+        meetingStartTime = new Date();
+        meetingEndTime = null;
+        meetingTranscript = [];
+        languagesUsed.clear();
+        costCalculated = false;
+        startTimer();
+        
+        document.getElementById('startMeetingBtn').disabled = true;
+        document.getElementById('stopMeetingBtn').disabled = false;
+        document.getElementById('printCostBtn').disabled = false;
+        const statusDiv = document.getElementById('meetingStatus');
+        statusDiv.className = 'status-badge status-active';
+        statusDiv.innerHTML = '<i class="fas fa-circle"></i> Meeting Active - Recording & Translating';
+        
+        if (!('webkitSpeechRecognition' in window)) {
+            alert("Please use Chrome browser");
+            return;
+        }
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        speechRecognition = new SpeechRecognition();
+        speechRecognition.continuous = true;
+        speechRecognition.interimResults = false;
+        speechRecognition.lang = 'en-US';
+        
+        speechRecognition.onresult = async (event) => {
+            const result = event.results[event.results.length - 1];
+            let text = result[0].transcript.trim();
+            if (!text) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const speaker = await identifySpeaker() || (registeredSpeakers.length === 1 ? registeredSpeakers[0].name : "Unknown");
+            const detectedLang = detectLanguage(text);
+            languagesUsed.add(detectedLang);
+            const translatedText = translateToEnglish(text, detectedLang);
+            
+            meetingTranscript.push({ speaker, originalText: text, translatedText, timestamp, language: detectedLang });
+            refreshTranscript();
+        };
+        
+        speechRecognition.start();
+    }
+    
+    function stopMeeting() {
+        if (speechRecognition) { speechRecognition.stop(); speechRecognition = null; }
+        isMeetingRunning = false;
+        meetingEndTime = new Date();
+        updateTimer();
+        if (timerInterval) clearInterval(timerInterval);
+        meetingCount++;
+        saveData();
+        updateStats();
+        
+        document.getElementById('startMeetingBtn').disabled = false;
+        document.getElementById('stopMeetingBtn').disabled = true;
+        const statusDiv = document.getElementById('meetingStatus');
+        statusDiv.className = 'status-badge status-inactive';
+        statusDiv.innerHTML = '<i class="fas fa-stop-circle"></i> Meeting Stopped';
+    }
+    
+    function printCost() {
+        if (!meetingEndTime) { alert("Please stop the meeting first."); return; }
+        const totalCalc = calculateTotalCost();
+        meetingCost = totalCalc.total;
+        costCalculated = true;
+        document.getElementById('costDetails').innerHTML = totalCalc.details.join('<br>');
+        document.getElementById('costAmount').innerText = meetingCost.toFixed(2);
+        document.getElementById('costDisplay').style.display = 'block';
+    }
+    
+    function generateReport() {
+        if (meetingTranscript.length === 0) {
+            alert("No meeting data to report.");
+            return;
+        }
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        const now = new Date();
+        
+        // Header
+        doc.setFillColor(28, 60, 90);
+        doc.rect(0, 0, 210, 55, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(24);
+        doc.text("PROFESSIONAL MEETING REPORT", 20, 25);
+        doc.setFontSize(11);
+        doc.text("Prepared by Peter AI Pro - Enterprise Meeting Assistant", 20, 38);
+        doc.setFontSize(9);
+        doc.text("Software Developed By: Pesala Jayawardene", 20, 48);
+        
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(10);
+        let y = 70;
+        
+        // Office Info
+        if (officeInfo.name || officeInfo.address || officeInfo.meetingType) {
+            doc.setFillColor(240, 248, 255);
+            doc.roundedRect(20, y-5, 170, 28, 3, 3, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.text("ORGANIZATION INFORMATION", 25, y); y += 6;
+            doc.setFont("helvetica", "normal");
+            doc.text(`Office: ${officeInfo.name || 'N/A'}`, 25, y); y += 5.5;
+            doc.text(`Address: ${officeInfo.address || 'N/A'}`, 25, y); y += 5.5;
+            doc.text(`Meeting Type: ${officeInfo.meetingType || 'N/A'}`, 25, y); y += 8;
+        }
+        
+        doc.text(`Date: ${now.toLocaleDateString()}`, 20, y); y += 6;
+        doc.text(`Generated: ${now.toLocaleTimeString()}`, 20, y); y += 8;
+        
+        if (meetingStartTime) {
+            doc.text(`Meeting Started: ${meetingStartTime.toLocaleTimeString()}`, 20, y); y += 5.5;
+            doc.text(`Meeting Ended: ${meetingEndTime ? meetingEndTime.toLocaleTimeString() : "Ongoing"}`, 20, y); y += 5.5;
+            doc.text(`Duration: ${Math.floor(meetingDurationHours)}h ${Math.floor((meetingDurationHours % 1) * 60)}m`, 20, y); y += 10;
+        }
+        
+        const attendees = registeredSpeakers.map(s => s.name).join(', ');
+        doc.setFillColor(240, 248, 255);
+        doc.roundedRect(20, y-4, 170, 10, 3, 3, 'F');
+        doc.text(`ATTENDEES: ${attendees || "None"}`, 25, y+4);
+        y += 14;
+        
+        const langsDetected = Array.from(languagesUsed).map(l => languages[l]?.native || l).join(', ');
+        doc.text(`Languages Detected: ${langsDetected || "English only"}`, 20, y); y += 10;
+        
+        // Transcript
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(12);
+        doc.setTextColor(28, 60, 90);
+        doc.text("MEETING TRANSCRIPT (with Translation)", 20, y); y += 8;
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        
+        for (let entry of meetingTranscript.slice(0, 35)) {
+            if (y > 270) { doc.addPage(); y = 25; doc.setFontSize(8); }
+            doc.text(`[${entry.timestamp}] ${entry.speaker}:`, 25, y); y += 4;
+            let originalLines = doc.splitTextToSize(`Original: ${entry.originalText.substring(0, 70)}`, 155);
+            doc.text(originalLines, 28, y); y += originalLines.length * 4;
+            if (entry.translatedText !== entry.originalText) {
+                let transLines = doc.splitTextToSize(`English: ${entry.translatedText.substring(0, 70)}`, 155);
+                doc.text(transLines, 28, y); y += transLines.length * 4;
+            }
+            y += 2;
+        }
+        
+        // Cost Page
+        if (costCalculated && meetingCost > 0) {
+            doc.addPage();
+            y = 30;
+            doc.setFontSize(18);
+            doc.setTextColor(28, 60, 90);
+            doc.text("COST SUMMARY", 20, y); y += 12;
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            for (let detail of costDetails) {
+                if (y > 280) { doc.addPage(); y = 25; }
+                doc.text(detail, 25, y);
+                y += 6;
+            }
+            y += 8;
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(14);
+            doc.setTextColor(40, 167, 69);
+            doc.text(`TOTAL AMOUNT DUE: $${meetingCost.toFixed(2)}`, 20, y);
+        }
+        
+        // Footer & Page Numbers
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+            doc.text("© 2024 Pesala Jayawardene | Peter AI Pro", 105, 296, { align: 'center' });
+        }
+        
+        reportCount++;
+        saveData();
+        updateStats();
+        doc.save(`Peter_AI_Report_${now.toISOString().slice(0,19)}.pdf`);
+        document.getElementById('reportStatus').innerHTML = '<i class="fas fa-check-circle"></i> Report generated successfully!';
+        setTimeout(() => document.getElementById('reportStatus').innerHTML = '<i class="fas fa-info-circle"></i> Ready to generate report', 3000);
+    }
+    
+    function clearAll() {
+        if (isMeetingRunning) stopMeeting();
+        registeredSpeakers = [];
+        meetingTranscript = [];
+        saveData();
+        updateSpeakersList();
+        refreshTranscript();
+        document.getElementById('timerDisplay').innerHTML = '00:00:00';
+        document.getElementById('costDisplay').style.display = 'none';
+    }
+    
+    function showLanguageModal() {
+        const grid = document.getElementById('languageGrid');
+        grid.innerHTML = '';
+        for (let [code, lang] of Object.entries(languages)) {
+            const div = document.createElement('div');
+            div.className = 'speaker-tag';
+            div.style.textAlign = 'center';
+            div.innerHTML = `${lang.native}<br><span style="font-size:10px;">${lang.name}</span>`;
+            div.onclick = () => {
+                currentLanguage = code;
+                localStorage.setItem('currentLanguage', code);
+                document.getElementById('langModal').style.display = 'none';
+                alert(`Language set to ${lang.native}`);
+            };
+            grid.appendChild(div);
+        }
+        document.getElementById('langModal').style.display = 'flex';
+    }
+    
+    // Login System
+    document.getElementById('loginBtn').onclick = () => {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        
+        if (validUsers[username] && validUsers[username] === password) {
+            currentLoggedInUser = username;
+            document.getElementById('loginOverlay').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            setTimeout(() => document.getElementById('mainApp').style.opacity = '1', 100);
+            document.getElementById('currentUser').innerHTML = `<i class="fas fa-user-shield"></i> ${username}`;
+            loadData();
+        } else {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 3000);
+        }
+    };
+    
+    document.getElementById('logoutBtn').onclick = () => {
+        document.getElementById('mainApp').style.opacity = '0';
+        setTimeout(() => {
+            document.getElementById('mainApp').style.display = 'none';
+            document.getElementById('loginOverlay').style.display = 'flex';
+            document.getElementById('loginUsername').value = '';
+            document.getElementById('loginPassword').value = '';
+            currentLoggedInUser = null;
+        }, 300);
+    };
+    
+    // Enter key login
+    document.getElementById('loginPassword').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('loginBtn').click();
+    });
+    
+    // Event Listeners
+    document.getElementById('registerBtn').onclick = () => {
+        const name = prompt("Enter speaker's full name:");
+        if (name?.trim()) registerSpeaker(name.trim());
+    };
+    document.getElementById('clearSpeakersBtn').onclick = clearAll;
+    document.getElementById('startMeetingBtn').onclick = startMeeting;
+    document.getElementById('stopMeetingBtn').onclick = stopMeeting;
+    document.getElementById('printCostBtn').onclick = printCost;
+    document.getElementById('generateReportBtn').onclick = generateReport;
+    document.getElementById('officeInfoBtn').onclick = () => document.getElementById('officeModal').style.display = 'flex';
+    document.getElementById('closeOfficeBtn').onclick = () => document.getElementById('officeModal').style.display = 'none';
+    document.getElementById('saveOfficeBtn').onclick = saveOfficeInfo;
+    document.getElementById('langSelectBtn').onclick = showLanguageModal;
+    document.getElementById('closeLangBtn').onclick = () => document.getElementById('langModal').style.display = 'none';
+    
+    window.onclick = (e) => {
+        if (e.target === document.getElementById('officeModal')) document.getElementById('officeModal').style.display = 'none';
+        if (e.target === document.getElementById('langModal')) document.getElementById('langModal').style.display = 'none';
+    };
+    
+    window.onbeforeunload = () => {
+        if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
+        if (speechRecognition) speechRecognition.abort();
+    };
+</script>
+</body>
+</html>
